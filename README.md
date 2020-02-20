@@ -13,6 +13,7 @@ This plugin is a WIP, check below for the current limitations.
 ## WIP
 - Currently no password support for MiLight Hub or MQTT server
 - Currently only RGB(W) lamps have been confirmed to work, others *might* work as well
+- Currently no backchannel, HomeKit doesn't update if MiLight hub is controlled otherwise
 
 ## Installation
 1. Install homebridge using: npm install -g homebridge
