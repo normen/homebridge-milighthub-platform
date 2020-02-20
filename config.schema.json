@@ -1,0 +1,22 @@
+{
+  "pluginAlias": "MiLightHubPlatform",
+  "pluginType": "platform",
+  "headerDisplay": "Configure your lights in your [MiLight Hub](http://milight-hub.local)",
+  "footerDisplay": "For documentation please see http://github.com/normen/homebridge-milighthub-platform",
+  "schema": {
+    "name": {
+      "title": "Name",
+      "type": "string",
+      "default": "MiLightHubPlatform",
+      "description": "The name of the platform as it appears in the homebridge log",
+      "required": false
+    },
+    "host": {
+      "title": "Hostname",
+      "type": "string",
+      "default": "milight-hub.local",
+      "description": "The hostname or IP address of the MiLight Hub",
+      "required": false
+    }
+  }
+}
