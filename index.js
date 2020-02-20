@@ -1,3 +1,4 @@
+'use strict';
 var http = require('http');
 var mqtt = require('mqtt');
 var Accessory, Service, Characteristic, UUIDGen;
@@ -224,7 +225,7 @@ class MiLight {
     this.group_id = this.accessory.context.light_info.group_id;
     this.remote_type = this.accessory.context.light_info.remote_type;
     this.applyCallbacks(this.accessory);
-    this.currentState = { power: false, level: 100, saturation: 0, hue: 0, colorTemp: 0 };
+    this.currentState = { state: false, level: 100, saturation: 0, hue: 0, color_temp: 0 };
   }
 
   addServices (accessory) {
@@ -295,65 +296,62 @@ class MiLight {
 
   /** MiLight shiz */
   setPowerState (powerOn, callback) {
+    this.currentState.state = powerOn;
+    const command = {};
     if (powerOn) {
-      this.sendCommand({ state: 'On' });
+      if (this.currentState.level > 1) {
+        command.state = 'On';
+      } else {
+        command.commands = ['night_mode'];
+      }
     } else {
-      this.sendCommand({ state: 'Off' });
+      command.state = 'Off';
     }
-    this.currentState.power = powerOn;
+    this.sendCommand(command);
     callback(null);
   }
 
   setBrightness (level, callback) {
     const command = {};
-    if (level === 0) {
-      command.state = 'Off';
-      this.currentState.power = false;
-    } else if (level <= 5) {
-      command.level = level;
+    if (level <= 1) {
       command.commands = ['night_mode'];
     } else {
+      if (this.currentState.level <= 1) command.state = 'On';
       command.level = level;
     }
-    this.sendCommand(command);
     this.currentState.level = level;
+    this.sendCommand(command);
     callback(null);
   }
 
   setHue (value, callback, context) {
     const command = {};
-    if (this.currentState.level > 5) command.state = 'On';
-    command.hue = value;
-    if (this.currentState.saturation < 5 && this.currentState.level > 5) {
-      command.commands = ['set_white'];
+    if (this.currentState.saturation > 0) { // only send hue if saturation is above zero
+      command.hue = value;
+      this.sendCommand(command);
     }
-    this.sendCommand(command);
     this.currentState.hue = value;
-    this.currentState.power = true;
     callback(null);
   }
 
   setSaturation (value, callback) {
     const command = {};
-    if (this.currentState.level > 5) command.state = 'On';
-    if (value < 5 && this.currentState.level > 5) {
+    if (value === 0) { // set white when saturation is zero
       command.commands = ['set_white'];
-      command.saturation = 0;
     } else {
       command.saturation = value;
+      command.hue = this.currentState.hue; // always send hue along
     }
+    this.currentState.saturation = value;
     this.sendCommand(command);
-    this.currentState.saturation = command.saturation;
-    this.currentState.power = true;
     callback(null);
   }
 
   setColorTemperature (value, callback) {
     const command = {};
-    if (this.currentState.level > 5) command.state = 'On';
     command.color_temp = value;
-    this.currentState.colorTemp = value;
-    this.currentState.power = true;
+    this.currentState.color_temp = value;
+    this.sendCommand(command);
     callback(null);
   }
 }
