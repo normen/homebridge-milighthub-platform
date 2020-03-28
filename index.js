@@ -300,7 +300,6 @@ class MiLight {
 
   stateChange () {
     if (this.myTimeout) {
-      console.log('Clear timeout');
       clearTimeout(this.myTimeout);
     }
     this.myTimeout = setTimeout(this.applyDesignatedState.bind(this), 100);
@@ -308,18 +307,21 @@ class MiLight {
 
   applyDesignatedState () {
     // this.myTimeout = null;
-    console.log('Apply state');
     const dstate = this.designatedState;
     const cstate = this.currentState;
     this.designatedState = {};
     const command = {};
     if (dstate.state) {
-      if (cstate.level > 1) {
+      if (dstate.level === undefined) {
+        dstate.level = cstate.level;
+      }
+      if (dstate.level > 1) {
         command.state = 'On';
         command.level = dstate.level;
         cstate.level = dstate.level;
-      } else {
+      } else if (dstate.level <= 1) {
         command.commands = ['night_mode'];
+        cstate.level = dstate.level;
       }
       cstate.state = dstate.state;
     } else if (dstate.state !== undefined) {
@@ -328,7 +330,11 @@ class MiLight {
     }
     if (dstate.saturation !== undefined) {
       if (dstate.saturation === 0) {
-        command.commands = ['set_white'];
+        if (command.commands) {
+          command.commands = command.commands.concat(['set_white']);
+        } else {
+          command.commands = ['set_white'];
+        }
       } else {
         command.saturation = dstate.saturation;
       }
@@ -350,36 +356,11 @@ class MiLight {
     this.designatedState.state = powerOn;
     this.stateChange();
     callback(null);
-    return;
-    this.currentState.state = powerOn;
-    const command = {};
-    if (powerOn) {
-      if (this.currentState.level > 1) {
-        command.state = 'On';
-      } else {
-        command.commands = ['night_mode'];
-      }
-    } else {
-      command.state = 'Off';
-    }
-    this.sendCommand(command);
-    callback(null);
   }
 
   setBrightness (level, callback) {
     this.designatedState.level = level;
     this.stateChange();
-    callback(null);
-    return;
-    const command = {};
-    if (level <= 1) {
-      command.commands = ['night_mode'];
-    } else {
-      if (this.currentState.level <= 1) command.state = 'On';
-      command.level = level;
-    }
-    this.currentState.level = level;
-    this.sendCommand(command);
     callback(null);
   }
 
@@ -387,42 +368,17 @@ class MiLight {
     this.designatedState.hue = value;
     this.stateChange();
     callback(null);
-    return;
-    const command = {};
-    if (this.currentState.saturation > 0) { // only send hue if saturation is above zero
-      command.hue = value;
-      this.sendCommand(command);
-    }
-    this.currentState.hue = value;
-    callback(null);
   }
 
   setSaturation (value, callback) {
     this.designatedState.saturation = value;
     this.stateChange();
     callback(null);
-    return;
-    const command = {};
-    if (value === 0) { // set white when saturation is zero
-      command.commands = ['set_white'];
-    } else {
-      command.saturation = value;
-      command.hue = this.currentState.hue; // always send hue along
-    }
-    this.currentState.saturation = value;
-    this.sendCommand(command);
-    callback(null);
   }
 
   setColorTemperature (value, callback) {
     this.designatedState.color_temp = value;
     this.stateChange();
-    callback(null);
-    return;
-    const command = {};
-    command.color_temp = value;
-    this.currentState.color_temp = value;
-    this.sendCommand(command);
     callback(null);
   }
 }
