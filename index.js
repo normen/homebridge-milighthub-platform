@@ -141,7 +141,7 @@ class MiLightHubPlatform {
         });
         res.on('end', _ => {
           // console.log("response end, status: "+res.statusCode+" recvBody: "+recvBody);
-          if (res.statusCode == 200) {
+          if (res.statusCode === 200) {
             resolve(recvBody);
           } else {
             resolve(false);
@@ -162,6 +162,7 @@ class MiLightHubPlatform {
       const sendBody = JSON.stringify(command);
       try {
         this.mqttClient.publish(path, sendBody);
+        this.log(path, command);
       } catch (e) {
         this.log(e);
       }
@@ -169,6 +170,7 @@ class MiLightHubPlatform {
     } else {
       var path = '0x' + deviceId.toString(16) + '/' + remoteType + '/' + groupId;
       this.sendHttp(path, command);
+      this.log(path, command);
     }
   }
 
@@ -226,6 +228,8 @@ class MiLight {
     this.remote_type = this.accessory.context.light_info.remote_type;
     this.applyCallbacks(this.accessory);
     this.currentState = { state: false, level: 100, saturation: 0, hue: 0, color_temp: 0 };
+    this.designatedState = {};
+    this.myTimeout = null;
   }
 
   addServices (accessory) {
@@ -294,8 +298,59 @@ class MiLight {
     this.platform.sendCommand(this.device_id, this.remote_type, this.group_id, command);
   }
 
+  stateChange () {
+    if (this.myTimeout) {
+      console.log('Clear timeout');
+      clearTimeout(this.myTimeout);
+    }
+    this.myTimeout = setTimeout(this.applyDesignatedState.bind(this), 100);
+  }
+
+  applyDesignatedState () {
+    // this.myTimeout = null;
+    console.log('Apply state');
+    const dstate = this.designatedState;
+    const cstate = this.currentState;
+    this.designatedState = {};
+    const command = {};
+    if (dstate.state) {
+      if (cstate.level > 1) {
+        command.state = 'On';
+        command.level = dstate.level;
+        cstate.level = dstate.level;
+      } else {
+        command.commands = ['night_mode'];
+      }
+      cstate.state = dstate.state;
+    } else if (dstate.state !== undefined) {
+      command.state = 'Off';
+      cstate.state = dstate.state;
+    }
+    if (dstate.saturation !== undefined) {
+      if (dstate.saturation === 0) {
+        command.commands = ['set_white'];
+      } else {
+        command.saturation = dstate.saturation;
+      }
+      cstate.saturation = dstate.saturation;
+    }
+    if (dstate.hue !== undefined) {
+      command.hue = dstate.hue;
+      cstate.hue = dstate.hue;
+    }
+    if (dstate.color_temp !== undefined) {
+      command.color_temp = dstate.color_temp;
+      cstate.color_temp = dstate.color_temp;
+    }
+    this.sendCommand(command);
+  }
+
   /** MiLight shiz */
   setPowerState (powerOn, callback) {
+    this.designatedState.state = powerOn;
+    this.stateChange();
+    callback(null);
+    return;
     this.currentState.state = powerOn;
     const command = {};
     if (powerOn) {
@@ -312,6 +367,10 @@ class MiLight {
   }
 
   setBrightness (level, callback) {
+    this.designatedState.level = level;
+    this.stateChange();
+    callback(null);
+    return;
     const command = {};
     if (level <= 1) {
       command.commands = ['night_mode'];
@@ -325,6 +384,10 @@ class MiLight {
   }
 
   setHue (value, callback, context) {
+    this.designatedState.hue = value;
+    this.stateChange();
+    callback(null);
+    return;
     const command = {};
     if (this.currentState.saturation > 0) { // only send hue if saturation is above zero
       command.hue = value;
@@ -335,6 +398,10 @@ class MiLight {
   }
 
   setSaturation (value, callback) {
+    this.designatedState.saturation = value;
+    this.stateChange();
+    callback(null);
+    return;
     const command = {};
     if (value === 0) { // set white when saturation is zero
       command.commands = ['set_white'];
@@ -348,6 +415,10 @@ class MiLight {
   }
 
   setColorTemperature (value, callback) {
+    this.designatedState.color_temp = value;
+    this.stateChange();
+    callback(null);
+    return;
     const command = {};
     command.color_temp = value;
     this.currentState.color_temp = value;
