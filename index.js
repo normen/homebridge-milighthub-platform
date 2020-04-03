@@ -26,7 +26,7 @@ class MiLightHubPlatform {
     this.accessories = [];
 
     if (api) {
-    // Save the API object as plugin needs to register new accessory via this object
+      // Save the API object as plugin needs to register new accessory via this object
       this.api = api;
 
       // Listen to event "didFinishLaunching", this means homebridge already finished loading cached accessories.
@@ -115,9 +115,9 @@ class MiLightHubPlatform {
       var found = false;
       this.accessories.forEach(milight => {
         if (milight.group_id === lightInfo.group_id &&
-          milight.device_id === lightInfo.device_id &&
-          milight.remote_type === lightInfo.remote_type &&
-          milight.name === lightInfo.name) {
+            milight.device_id === lightInfo.device_id &&
+            milight.remote_type === lightInfo.remote_type &&
+            milight.name === lightInfo.name) {
           found = true;
         }
       });
@@ -133,10 +133,10 @@ class MiLightHubPlatform {
       var found = false;
       lightList.forEach(lightInfo => {
         if (milight.group_id === lightInfo.group_id &&
-        milight.device_id === lightInfo.device_id &&
-        milight.remote_type === lightInfo.remote_type &&
-        milight.name === lightInfo.name) {
-        // already exists
+            milight.device_id === lightInfo.device_id &&
+            milight.remote_type === lightInfo.remote_type &&
+            milight.name === lightInfo.name) {
+          // already exists
           found = true;
         }
       });
@@ -256,9 +256,9 @@ class MiLight {
     const informationService = accessory.getService(Service.AccessoryInformation);// new Service.AccessoryInformation();
     if (informationService) {
       informationService
-        .setCharacteristic(Characteristic.Manufacturer, 'MiLight')
-        .setCharacteristic(Characteristic.Model, this.remote_type)
-        .setCharacteristic(Characteristic.SerialNumber, this.device_id + '[' + this.group_id + ']');
+          .setCharacteristic(Characteristic.Manufacturer, 'MiLight')
+          .setCharacteristic(Characteristic.Model, this.remote_type)
+          .setCharacteristic(Characteristic.SerialNumber, this.device_id + '[' + this.group_id + ']');
     } else {
       this.log('Error: No information service found');
     }
@@ -275,13 +275,13 @@ class MiLight {
 
     if (['fut089', 'cct', 'rgb_cct'].indexOf(this.remote_type) > -1) {
       lightbulbService
-        .addCharacteristic(new Characteristic.ColorTemperature())
-      // maxValue 370 = 2700K (1000000/2700)
-      // minValue 153 = 6500K (1000000/6500)
-        .setProps({
-          maxValue: 370,
-          minValue: 153
-        });
+          .addCharacteristic(new Characteristic.ColorTemperature())
+          // maxValue 370 = 2700K (1000000/2700)
+          // minValue 153 = 6500K (1000000/6500)
+          .setProps({
+            maxValue: 370,
+            minValue: 153
+          });
     }
     accessory.addService(lightbulbService);
   }
@@ -294,23 +294,23 @@ class MiLight {
     }
     if (lightbulbService.getCharacteristic(Characteristic.On)) {
       lightbulbService.getCharacteristic(Characteristic.On)
-        .on('set', this.setPowerState.bind(this));
+          .on('set', this.setPowerState.bind(this));
     }
     if (lightbulbService.getCharacteristic(Characteristic.Brightness)) {
       lightbulbService.getCharacteristic(Characteristic.Brightness)
-        .on('set', this.setBrightness.bind(this));
+          .on('set', this.setBrightness.bind(this));
     }
     if (lightbulbService.getCharacteristic(Characteristic.Saturation)) {
       lightbulbService.getCharacteristic(Characteristic.Saturation)
-        .on('set', this.setSaturation.bind(this));
+          .on('set', this.setSaturation.bind(this));
     }
     if (lightbulbService.getCharacteristic(Characteristic.Hue)) {
       lightbulbService.getCharacteristic(Characteristic.Hue)
-        .on('set', this.setHue.bind(this));
+          .on('set', this.setHue.bind(this));
     }
     if (lightbulbService.getCharacteristic(Characteristic.ColorTemperature)) {
       lightbulbService.getCharacteristic(Characteristic.ColorTemperature)
-        .on('set', this.setColorTemperature.bind(this));
+          .on('set', this.setColorTemperature.bind(this));
     }
   }
 
