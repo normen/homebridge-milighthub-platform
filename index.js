@@ -326,6 +326,7 @@ class MiLight {
     }
     if (lightbulbService.getCharacteristic(Characteristic.Brightness)) {
       lightbulbService.getCharacteristic(Characteristic.Brightness)
+          .on('get', this.getBrightness.bind(this))
           .on('set', this.setBrightness.bind(this));
     }
     if (lightbulbService.getCharacteristic(Characteristic.Saturation)) {
@@ -402,13 +403,14 @@ class MiLight {
   /** MiLight shiz */
   async getPowerState (callback) {
     if (this.mqttClient) {
+      // TODO: implement getPowerState via MQTT
       //not implemented yet so return null
       callback(null, null);
     } else {
       var path = '0x' + this.device_id.toString(16) + '/' + this.remote_type + '/' + this.group_id;
       var returnValue = JSON.parse(await this.platform.getHttp(path));
 
-      this.platform.debugLog(['\n', 'GET Request: ' + path, 'returned JSON Object: ', returnValue]);
+      this.platform.debugLog(['\n', '[getPowerState] GET Request: ' + path, 'returned JSON Object: ', returnValue]);
 
       callback(null, returnValue.state === 'ON' || returnValue.bulb_mode === 'night');
     }
@@ -418,6 +420,29 @@ class MiLight {
     this.designatedState.state = powerOn;
     this.stateChange();
     callback(null);
+  }
+
+  async getBrightness (callback) {
+    var brightness;
+
+    if (this.mqttClient) {
+      // TODO: implement getBrightness via MQTT
+      // not implemented yet so return null
+      callback(null, null);
+    } else {
+      var path = '0x' + this.device_id.toString(16) + '/' + this.remote_type + '/' + this.group_id;
+      var returnValue = JSON.parse(await this.platform.getHttp(path));
+
+      this.platform.debugLog(['\n', '[getBrightness] GET Request: ' + path, 'returned JSON Object: ', returnValue]);
+
+      if(returnValue.bulb_mode === 'night'){
+        brightness = 1; //set brightness to 1 if night_mode is enabled
+      } else {
+        brightness = Math.round(returnValue.brightness/2.55); //rounding should not be necessary but implemented it to be safe
+      }
+
+      callback(null, brightness);
+    }
   }
 
   setBrightness (level, callback) {
