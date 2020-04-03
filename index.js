@@ -406,13 +406,11 @@ class MiLight {
       callback(null, null);
     } else {
       var path = '0x' + this.device_id.toString(16) + '/' + this.remote_type + '/' + this.group_id;
-      var returnValue = await this.platform.getHttp(path);
+      var returnValue = JSON.parse(await this.platform.getHttp(path));
 
-      this.platform.debugLog(['\n', 'GET Request: ' + path, 'returned JSON Object: ', JSON.parse(returnValue)]);
+      this.platform.debugLog(['\n', 'GET Request: ' + path, 'returned JSON Object: ', returnValue]);
 
-      var state = JSON.parse(returnValue).state;
-
-      callback(null, state === "ON");
+      callback(null, returnValue.state === 'ON' || returnValue.bulb_mode === 'night');
     }
   }
 
