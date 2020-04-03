@@ -54,6 +54,25 @@ class MiLightHubPlatform {
     callback(null);
   }
 
+  debugLog (message) {
+    if (!this.debug) {
+      return;
+    }
+
+    const debugLogDelimiter = 'DEBUG: ';
+    if (Array.isArray(message)) {
+      for (var i = 0, len = message.length; i < len; i++) {
+        if (i === 0) {
+          this.log(debugLogDelimiter, message[i]);
+        } else {
+          console.log(message[i])
+        }
+      }
+    } else {
+      this.log(debugLogDelimiter, message);
+    }
+  }
+
   getServerLightList () {
     const platform = this;
     this.readHubSettings(this.host).then(response => {
