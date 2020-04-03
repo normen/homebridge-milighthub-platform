@@ -225,6 +225,33 @@ class MiLightHubPlatform {
       req.end();
     });
   }
+
+  async getHttp (path) {
+    return new Promise(resolve => {
+      const url = 'http://' + this.host + '/gateways/' + path + '?blockOnQueue=true';
+      const req = http.request(url, {
+        method: 'GET'
+      }, res => {
+        let recvBody = '';
+        res.on('data', chunk => {
+          recvBody += chunk;
+        });
+        res.on('end', _ => {
+          // this.debugLog(['\n', 'GET request end - HTTP status code: ' + res.statusCode + '\nrecvBody: ', JSON.parse(recvBody)]);
+          if (res.statusCode === 200) {
+            resolve(recvBody);
+          } else {
+            resolve(false);
+          }
+        });
+      });
+      req.on('error', e => {
+        // console.log('error sending to Milight esp hub', url, json, e);
+        resolve(false);
+      });
+      req.end();
+    });
+  }
 }
 
 class MiLight {
@@ -294,6 +321,7 @@ class MiLight {
     }
     if (lightbulbService.getCharacteristic(Characteristic.On)) {
       lightbulbService.getCharacteristic(Characteristic.On)
+          .on('get', this.getPowerState.bind(this))
           .on('set', this.setPowerState.bind(this));
     }
     if (lightbulbService.getCharacteristic(Characteristic.Brightness)) {
@@ -372,6 +400,22 @@ class MiLight {
   }
 
   /** MiLight shiz */
+  async getPowerState (callback) {
+    if (this.mqttClient) {
+      //not implemented yet so return null
+      callback(null, null);
+    } else {
+      var path = '0x' + this.device_id.toString(16) + '/' + this.remote_type + '/' + this.group_id;
+      var returnValue = await this.platform.getHttp(path);
+
+      this.platform.debugLog(['\n', 'GET Request: ' + path, 'returned JSON Object: ', JSON.parse(returnValue)]);
+
+      var state = JSON.parse(returnValue).state;
+
+      callback(null, state === "ON");
+    }
+  }
+
   setPowerState (powerOn, callback) {
     this.designatedState.state = powerOn;
     this.stateChange();
