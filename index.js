@@ -19,6 +19,7 @@ class MiLightHubPlatform {
     var platform = this;
     this.log = log;
     this.config = config;
+    this.debug = config['debug'] || false;
 
     // TODO: settings
     this.host = config.host || 'milight-hub.local';
