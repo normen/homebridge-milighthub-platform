@@ -252,6 +252,30 @@ class MiLightHubPlatform {
       req.end();
     });
   }
+
+  //RGBtoHSV by Garry Tan from https://axonflux.com/handy-rgb-to-hsl-and-rgb-to-hsv-color-model-c with some modifications
+  RGBtoHS(r, g, b) {
+    var max = Math.max(r, g, b), min = Math.min(r, g, b), a = max - min;
+
+    switch(max) {
+      case min:
+        var h = 0;
+        break;
+      case r:
+        h = (g - b + a * (g < b ? 6 : 0)) / (6 * a);
+        break;
+      case g:
+        h = (b - r + 2 * a) / (6 * a);
+        break;
+      case b:
+        h = (r - g + 4 * a) / (6 * a);
+    }
+
+    return {
+      h: Math.round(100 * h),
+      s: Math.round(100 * (0 === max ? 0 : a / max))
+    };
+  }
 }
 
 class MiLight {
@@ -329,16 +353,19 @@ class MiLight {
           .on('get', this.getBrightness.bind(this))
           .on('set', this.setBrightness.bind(this));
     }
-    if (lightbulbService.getCharacteristic(Characteristic.Saturation)) {
-      lightbulbService.getCharacteristic(Characteristic.Saturation)
-          .on('set', this.setSaturation.bind(this));
-    }
     if (lightbulbService.getCharacteristic(Characteristic.Hue)) {
       lightbulbService.getCharacteristic(Characteristic.Hue)
+          .on('get', this.getHue.bind(this))
           .on('set', this.setHue.bind(this));
+    }
+    if (lightbulbService.getCharacteristic(Characteristic.Saturation)) {
+      lightbulbService.getCharacteristic(Characteristic.Saturation)
+          .on('get', this.getSaturation.bind(this))
+          .on('set', this.setSaturation.bind(this));
     }
     if (lightbulbService.getCharacteristic(Characteristic.ColorTemperature)) {
       lightbulbService.getCharacteristic(Characteristic.ColorTemperature)
+          .on('get', this.getColorTemperature.bind(this))
           .on('set', this.setColorTemperature.bind(this));
     }
   }
@@ -451,16 +478,76 @@ class MiLight {
     callback(null);
   }
 
+  async getHue (callback) {
+    if (this.mqttClient) {
+      // TODO: implement getHue via MQTT
+      //not implemented yet so return null
+      callback(null, null);
+    } else {
+      var path = '0x' + this.device_id.toString(16) + '/' + this.remote_type + '/' + this.group_id;
+      var returnValue = JSON.parse(await this.platform.getHttp(path));
+
+      this.platform.debugLog(['\n', '[getHue] GET Request: ' + path, 'returned JSON Object: ', returnValue]);
+
+      if(returnValue.bulb_mode === "color"){
+        var calculatedHS = this.platform.RGBtoHS(returnValue.color.r, returnValue.color.g, returnValue.color.b);
+        callback(null, calculatedHS.h);
+      } else {
+        callback(null, null);
+      }
+    }
+  }
+
   setHue (value, callback, context) {
     this.designatedState.hue = value;
     this.stateChange();
     callback(null);
   }
 
+  async getSaturation (callback) {
+    if (this.mqttClient) {
+      // TODO: implement getSaturation via MQTT
+      //not implemented yet so return null
+      callback(null, null);
+    } else {
+      var path = '0x' + this.device_id.toString(16) + '/' + this.remote_type + '/' + this.group_id;
+      var returnValue = JSON.parse(await this.platform.getHttp(path));
+
+      this.platform.debugLog(['\n', '[getSaturation] GET Request: ' + path, 'returned JSON Object: ', returnValue]);
+
+      if(returnValue.bulb_mode === "color"){
+        var calculatedHS = this.platform.RGBtoHS(returnValue.color.r, returnValue.color.g, returnValue.color.b);
+        callback(null, calculatedHS.s);
+      } else {
+        callback(null, null);
+      }
+    }
+  }
+
   setSaturation (value, callback) {
     this.designatedState.saturation = value;
     this.stateChange();
     callback(null);
+  }
+
+  async getColorTemperature (callback) {
+    if (this.mqttClient) {
+      // TODO: implement getBrightness via MQTT
+      // not implemented yet so return null
+      callback(null, null);
+    } else {
+      var path = '0x' + this.device_id.toString(16) + '/' + this.remote_type + '/' + this.group_id;
+      var returnValue = JSON.parse(await this.platform.getHttp(path));
+
+      this.platform.debugLog(['\n', '[getColorTemperature] GET Request: ' + path, 'returned JSON Object: ', returnValue]);
+
+      if(returnValue.bulb_mode === "color"){
+        callback(null, null);
+      } else {
+        var colorTemperature = Math.round(100000 / returnValue.color_temp); //rounding should not be necessary but implemented it to be safe
+        callback(null, colorTemperature);
+      }
+    }
   }
 
   setColorTemperature (value, callback) {
