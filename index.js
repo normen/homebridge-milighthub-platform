@@ -172,7 +172,7 @@ class MiLightHubPlatform {
 
   async sendHttp (path, json) {
     return new Promise(resolve => {
-      const url = 'http://' + this.host + path;
+      const url = 'http://' + this.host + '/gateways/' + path;
       const sendBody = JSON.stringify(json);
       const req = http.request(url, {
         method: 'PUT',
@@ -194,7 +194,7 @@ class MiLightHubPlatform {
         });
       });
       req.on('error', e => {
-        console.log('error sending to Milight esp hub', url, e);
+        // console.log('error sending to Milight esp hub', url, json, e);
         resolve(false);
       });
       req.write(sendBody);
@@ -204,7 +204,7 @@ class MiLightHubPlatform {
 
   async getHttp (path) {
     return new Promise(resolve => {
-      const url = 'http://' + this.host + '/gateways/' + path + '?blockOnQueue=true';
+      const url = 'http://' + this.host + path;
       const req = http.request(url, {
         method: 'GET'
       }, res => {
@@ -222,7 +222,7 @@ class MiLightHubPlatform {
         });
       });
       req.on('error', e => {
-        // console.log('error sending to Milight esp hub', url, json, e);
+        console.log('error sending to Milight esp hub', url, e);
         resolve(false);
       });
       req.end();
