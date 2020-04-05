@@ -80,7 +80,7 @@ class MiLightHubPlatform {
 
   getServerLightList () {
     const platform = this;
-    this.readHubSettings(this.host).then(response => {
+    this.getHttp('/settings').then(response => {
       if (response) {
         var lightList = [];
         const settings = JSON.parse(response);
@@ -152,34 +152,6 @@ class MiLightHubPlatform {
     });
   }
 
-  async readHubSettings (host) {
-    // console.log("apiCall", alias, json);
-    return new Promise(resolve => {
-      const url = 'http://' + host + '/settings';
-      const req = http.request(url, {
-        method: 'GET'
-      }, res => {
-        let recvBody = '';
-        res.on('data', chunk => {
-          recvBody += chunk;
-        });
-        res.on('end', _ => {
-          // console.log("response end, status: "+res.statusCode+" recvBody: "+recvBody);
-          if (res.statusCode === 200) {
-            resolve(recvBody);
-          } else {
-            resolve(false);
-          }
-        });
-      });
-      req.on('error', e => {
-        console.log('error sending to Milight esp hub', url, e);
-        resolve(false);
-      });
-      req.end();
-    });
-  }
-
   sendCommand (deviceId, remoteType, groupId, command) {
     if (this.mqttClient) {
       var path = this.mqttTopicPattern.replace(':device_id', deviceId).replace(':device_type', remoteType).replace(':group_id', groupId);
@@ -200,7 +172,7 @@ class MiLightHubPlatform {
 
   async sendHttp (path, json) {
     return new Promise(resolve => {
-      const url = 'http://' + this.host + '/gateways/' + path;
+      const url = 'http://' + this.host + path;
       const sendBody = JSON.stringify(json);
       const req = http.request(url, {
         method: 'PUT',
@@ -222,7 +194,7 @@ class MiLightHubPlatform {
         });
       });
       req.on('error', e => {
-        // console.log('error sending to Milight esp hub', url, json, e);
+        console.log('error sending to Milight esp hub', url, e);
         resolve(false);
       });
       req.write(sendBody);
@@ -260,8 +232,8 @@ class MiLightHubPlatform {
   //RGBtoHSV by Garry Tan from https://axonflux.com/handy-rgb-to-hsl-and-rgb-to-hsv-color-model-c with some modifications
   RGBtoHS(r, g, b) {
     const max = Math.max(r, g, b),
-          min = Math.min(r, g, b),
-          a = max - min;
+        min = Math.min(r, g, b),
+        a = max - min;
 
     switch(max) {
       case min:
@@ -466,7 +438,7 @@ class MiLight {
       //not implemented yet so return null
       callback(null, null);
     } else {
-      var path = '0x' + this.device_id.toString(16) + '/' + this.remote_type + '/' + this.group_id;
+      var path = '/gateways/' + '0x' + this.device_id.toString(16) + '/' + this.remote_type + '/' + this.group_id;
       var returnValue = JSON.parse(await this.platform.getHttp(path));
 
       this.platform.debugLog(['\n', '[getPowerState] GET Request: ' + path, 'returned JSON Object: ', returnValue]);
@@ -489,7 +461,7 @@ class MiLight {
       // not implemented yet so return null
       callback(null, null);
     } else {
-      var path = '0x' + this.device_id.toString(16) + '/' + this.remote_type + '/' + this.group_id;
+      var path = '/gateways/' + '0x' + this.device_id.toString(16) + '/' + this.remote_type + '/' + this.group_id;
       var returnValue = JSON.parse(await this.platform.getHttp(path));
 
       this.platform.debugLog(['\n', '[getBrightness] GET Request: ' + path, 'returned JSON Object: ', returnValue]);
@@ -516,7 +488,7 @@ class MiLight {
       //not implemented yet so return null
       callback(null, null);
     } else {
-      var path = '0x' + this.device_id.toString(16) + '/' + this.remote_type + '/' + this.group_id;
+      var path = '/gateways/' + '0x' + this.device_id.toString(16) + '/' + this.remote_type + '/' + this.group_id;
       var returnValue = JSON.parse(await this.platform.getHttp(path));
 
       this.platform.debugLog(['\n', '[getHue] GET Request: ' + path, 'returned JSON Object: ', returnValue]);
@@ -542,7 +514,7 @@ class MiLight {
       //not implemented yet so return null
       callback(null, null);
     } else {
-      var path = '0x' + this.device_id.toString(16) + '/' + this.remote_type + '/' + this.group_id;
+      var path = '/gateways/' + '0x' + this.device_id.toString(16) + '/' + this.remote_type + '/' + this.group_id;
       var returnValue = JSON.parse(await this.platform.getHttp(path));
 
       this.platform.debugLog(['\n', '[getSaturation] GET Request: ' + path, 'returned JSON Object: ', returnValue]);
@@ -568,7 +540,7 @@ class MiLight {
       // not implemented yet so return null
       callback(null, null);
     } else {
-      var path = '0x' + this.device_id.toString(16) + '/' + this.remote_type + '/' + this.group_id;
+      var path = '/gateways/' + '0x' + this.device_id.toString(16) + '/' + this.remote_type + '/' + this.group_id;
       var returnValue = JSON.parse(await this.platform.getHttp(path));
 
       this.platform.debugLog(['\n', '[getColorTemperature] GET Request: ' + path, 'returned JSON Object: ', returnValue]);
