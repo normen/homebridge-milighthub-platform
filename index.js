@@ -1,7 +1,10 @@
 'use strict';
+const packageJSON = require('./package.json');
+
 var http = require('http');
 var mqtt = require('mqtt');
 var Accessory, Service, Characteristic, UUIDGen;
+
 
 module.exports = function (homebridge) {
   Accessory = homebridge.platformAccessory;
@@ -308,8 +311,9 @@ class MiLight {
     if (informationService) {
       informationService
           .setCharacteristic(Characteristic.Manufacturer, 'MiLight')
-          .setCharacteristic(Characteristic.Model, this.remote_type)
-          .setCharacteristic(Characteristic.SerialNumber, this.device_id + '[' + this.group_id + ']');
+          .setCharacteristic(Characteristic.Model, (accessory.context.light_info.remote_type).toUpperCase())
+          .setCharacteristic(Characteristic.SerialNumber, accessory.context.light_info.device_id + '[' + accessory.context.light_info.group_id + ']')
+          .setCharacteristic(Characteristic.FirmwareRevision, packageJSON.version);
     } else {
       this.log('Error: No information service found');
     }
