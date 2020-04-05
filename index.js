@@ -22,6 +22,7 @@ class MiLightHubPlatform {
     var platform = this;
     this.log = log;
     this.config = config;
+    this.backchannel = config['backchannel'] === true || config['backchannel'] === null;
     this.debug = config['debug'] || false;
 
     // TODO: settings
@@ -350,29 +351,54 @@ class MiLight {
       return;
     }
     if (lightbulbService.getCharacteristic(Characteristic.On)) {
-      lightbulbService.getCharacteristic(Characteristic.On)
-          .on('get', this.getPowerState.bind(this))
-          .on('set', this.setPowerState.bind(this));
+      if(this.platform.backchannel) {
+        lightbulbService.getCharacteristic(Characteristic.On)
+            .on('get', this.getPowerState.bind(this))
+            .on('set', this.setPowerState.bind(this));
+      } else {
+        lightbulbService.getCharacteristic(Characteristic.On)
+            .on('set', this.setPowerState.bind(this));
+      }
     }
     if (lightbulbService.getCharacteristic(Characteristic.Brightness)) {
-      lightbulbService.getCharacteristic(Characteristic.Brightness)
-          .on('get', this.getBrightness.bind(this))
-          .on('set', this.setBrightness.bind(this));
+      if(this.platform.backchannel) {
+        lightbulbService.getCharacteristic(Characteristic.Brightness)
+            .on('get', this.getBrightness.bind(this))
+            .on('set', this.setBrightness.bind(this));
+      } else {
+        lightbulbService.getCharacteristic(Characteristic.Brightness)
+            .on('set', this.setBrightness.bind(this));
+      }
     }
     if (lightbulbService.getCharacteristic(Characteristic.Hue)) {
-      lightbulbService.getCharacteristic(Characteristic.Hue)
-          .on('get', this.getHue.bind(this))
-          .on('set', this.setHue.bind(this));
+      if(this.platform.backchannel) {
+        lightbulbService.getCharacteristic(Characteristic.Hue)
+            .on('get', this.getHue.bind(this))
+            .on('set', this.setHue.bind(this));
+      } else {
+        lightbulbService.getCharacteristic(Characteristic.Hue)
+            .on('set', this.setHue.bind(this));
+      }
     }
     if (lightbulbService.getCharacteristic(Characteristic.Saturation)) {
-      lightbulbService.getCharacteristic(Characteristic.Saturation)
-          .on('get', this.getSaturation.bind(this))
-          .on('set', this.setSaturation.bind(this));
+      if(this.platform.backchannel) {
+        lightbulbService.getCharacteristic(Characteristic.Saturation)
+            .on('get', this.getSaturation.bind(this))
+            .on('set', this.setSaturation.bind(this));
+      } else {
+        lightbulbService.getCharacteristic(Characteristic.Saturation)
+            .on('set', this.setSaturation.bind(this));
+      }
     }
-    if (lightbulbService.getCharacteristic(Characteristic.ColorTemperature)) {
-      lightbulbService.getCharacteristic(Characteristic.ColorTemperature)
-          .on('get', this.getColorTemperature.bind(this))
-          .on('set', this.setColorTemperature.bind(this));
+    if (lightbulbService.getCharacteristic(Characteristic.ColorTemperature)) {    // according to https://github.com/apple/HomeKitADK/blob/master/HAP/HAPCharacteristicTypes.h this is a unsupported combination: "This characteristic must not be used for lamps which support color." but adding it anyways because the RGB+CCT lamps do have seperate LEDs for the white temperatures and seperate for the RGB colors.
+      if(this.platform.backchannel) {
+        lightbulbService.getCharacteristic(Characteristic.ColorTemperature)
+            .on('get', this.getColorTemperature.bind(this))
+            .on('set', this.setColorTemperature.bind(this));
+      } else {
+        lightbulbService.getCharacteristic(Characteristic.ColorTemperature)
+            .on('set', this.setColorTemperature.bind(this));
+      }
     }
   }
 
