@@ -258,7 +258,9 @@ class MiLightHubPlatform {
 
   //RGBtoHSV by Garry Tan from https://axonflux.com/handy-rgb-to-hsl-and-rgb-to-hsv-color-model-c with some modifications
   RGBtoHS(r, g, b) {
-    var max = Math.max(r, g, b), min = Math.min(r, g, b), a = max - min;
+    const max = Math.max(r, g, b),
+          min = Math.min(r, g, b),
+          a = max - min;
 
     switch(max) {
       case min:
@@ -502,7 +504,7 @@ class MiLight {
     }
   }
 
-  setHue (value, callback, context) {
+  setHue (value, callback) {
     this.designatedState.hue = value;
     this.stateChange();
     callback(null);
