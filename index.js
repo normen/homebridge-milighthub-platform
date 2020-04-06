@@ -22,8 +22,16 @@ class MiLightHubPlatform {
     var platform = this;
     this.log = log;
     this.config = config;
-    this.backchannel = config['backchannel'] === true || config['backchannel'] === null;
+    this.backchannel = config['backchannel'] || false;
     this.debug = config['debug'] || false;
+
+    // according to https://github.com/apple/HomeKitADK/blob/master/HAP/HAPCharacteristicTypes.h this is a unsupported combination:
+    // "This characteristic must not be used for lamps which support color."
+    // but let the user choose because the RGB+CCT lamps do have seperate LEDs for the white temperatures and seperate for the RGB colors
+    // controlling them in RGB mode lets seem the RGB screen to be buggy (orange colors will sometimes change to white_mode)
+    // controlling them in RGB+CCT mode lets the color saving / favorite function to malfunction
+    this.rgbcct_mode = config['rgbcct_mode'] === null ? false : this.rgbcct_mode = config['rgbcct_mode'] !== false;
+
 
     // TODO: settings
     this.host = config.host || 'milight-hub.local';
@@ -170,7 +178,6 @@ class MiLightHubPlatform {
     }
   }
 
-
   async apiCall (path, json = null) {
     return new Promise(resolve => {
       const url = 'http://' + this.host + path;
@@ -293,7 +300,7 @@ class MiLight {
       lightbulbService.addCharacteristic(new Characteristic.Hue());
     }
 
-    if (['fut089', 'cct', 'rgb_cct'].indexOf(this.remote_type) > -1) {
+    if (this.platform.rgbcct_mode && ['fut089', 'cct', 'rgb_cct'].indexOf(this.remote_type) > -1) {
       lightbulbService
           .addCharacteristic(new Characteristic.ColorTemperature())
           // maxValue 370 = 2700K (1000000/2700)
@@ -316,6 +323,7 @@ class MiLight {
 
     if (lightbulbService.getCharacteristic(Characteristic.On)) {
       this.platform.debugLog('Characteristic.On is set');
+
       if(this.platform.backchannel) {
         lightbulbService.getCharacteristic(Characteristic.On)
             .on('get', this.getPowerState.bind(this));
@@ -326,6 +334,7 @@ class MiLight {
 
     if (lightbulbService.getCharacteristic(Characteristic.Brightness)) {
       this.platform.debugLog('Characteristic.Brightness is set');
+
       if(this.platform.backchannel) {
         lightbulbService.getCharacteristic(Characteristic.Brightness)
             .on('get', this.getBrightness.bind(this));
@@ -347,6 +356,7 @@ class MiLight {
 
     if (lightbulbService.getCharacteristic(Characteristic.Saturation)) {
       this.platform.debugLog('Characteristic.Saturation is set');
+
       if(this.platform.backchannel) {
         lightbulbService.getCharacteristic(Characteristic.Saturation)
             .on('get', this.getSaturation.bind(this));
@@ -355,7 +365,8 @@ class MiLight {
           .on('set', this.setSaturation.bind(this));
     }
 
-    if (lightbulbService.getCharacteristic(Characteristic.ColorTemperature)) {    // according to https://github.com/apple/HomeKitADK/blob/master/HAP/HAPCharacteristicTypes.h this is a unsupported combination: "This characteristic must not be used for lamps which support color." but adding it anyways because the RGB+CCT lamps do have seperate LEDs for the white temperatures and seperate for the RGB colors.
+
+    if(this.platform.rgbcct_mode && (lightbulbService.getCharacteristic(Characteristic.ColorTemperature))) {
       this.platform.debugLog('Characteristic.ColorTemperature is set');
 
       if(this.platform.backchannel) {
@@ -366,10 +377,7 @@ class MiLight {
           .on('set', this.setColorTemperature.bind(this));
 
     }
-  }
 
-  sendCommand (command) {
-    this.platform.sendCommand(this.device_id, this.remote_type, this.group_id, command);
   }
 
   stateChange () {
@@ -379,12 +387,25 @@ class MiLight {
     this.myTimeout = setTimeout(this.applyDesignatedState.bind(this), 100);
   }
 
+  testWhiteMode(hue, saturation){ // Copyright goes to https://gitlab.com/jespertheend/homebridge-milight-esp/-/blob/master/index.js
+    if(hue < 150){
+      let fn1 = -70 / (hue - 30) + 2.5;
+      let fn2 = -70 / (hue - 33) + 1;
+      return (saturation < fn1 || hue >= 30) && (saturation > fn2 && hue < 33);
+    }else{
+      let fn3 = 70 / (hue - 219) + 2.7;
+      let fn4 = 90 / (hue - 216) + 0.8;
+      return saturation < fn3 && saturation > fn4;
+    }
+  }
+
   applyDesignatedState () {
     // this.myTimeout = null;
     const dstate = this.designatedState;
     const cstate = this.currentState;
     this.designatedState = {};
     const command = {};
+
     if (dstate.state) {
       if (dstate.level === undefined) {
         dstate.level = cstate.level;
@@ -418,11 +439,31 @@ class MiLight {
       command.hue = dstate.hue;
       cstate.hue = dstate.hue;
     }
-    if (dstate.color_temp !== undefined) {
+
+    if(!this.platform.rgbcct_mode){
+      let useWhiteMode = this.testWhiteMode(dstate.hue, dstate.saturation);
+      if(useWhiteMode){
+        delete command.saturation;
+        delete command.hue;
+        let kelvin = 100;
+        if(dstate.hue > 150){
+          kelvin = 0.5 - dstate.saturation / 40;
+        }else{
+          kelvin = Math.sqrt(dstate.saturation*0.0033) + 0.5;
+          kelvin = Math.min(1, Math.max(0, kelvin));
+        }
+        kelvin *= 100;
+        kelvin = Math.round(kelvin);
+
+        command.kelvin = kelvin;
+        cstate.kelvin = kelvin;
+      }
+    } else if (dstate.color_temp !== undefined) {
       command.color_temp = dstate.color_temp;
       cstate.color_temp = dstate.color_temp;
     }
-    this.sendCommand(command);
+
+    this.platform.sendCommand(this.device_id, this.remote_type, this.group_id, command);
   }
 
   /** MiLight shiz */
@@ -435,7 +476,7 @@ class MiLight {
       var path = '/gateways/' + '0x' + this.device_id.toString(16) + '/' + this.remote_type + '/' + this.group_id;
       var returnValue = JSON.parse(await this.platform.apiCall(path));
 
-      this.platform.debugLog(['\n', '[getPowerState] GET Request: ' + path, 'returned JSON Object: ', returnValue]);
+      this.platform.debugLog(['[getPowerState] GET Request: ' + path, 'returned JSON Object: ', returnValue]);
 
       callback(null, returnValue.state === 'ON' || returnValue.bulb_mode === 'night');
     }
@@ -443,6 +484,9 @@ class MiLight {
 
   setPowerState (powerOn, callback) {
     this.designatedState.state = powerOn;
+
+    this.platform.debugLog(['[setPowerState] ' + powerOn]);
+
     this.stateChange();
     callback(null);
   }
@@ -458,7 +502,7 @@ class MiLight {
       var path = '/gateways/' + '0x' + this.device_id.toString(16) + '/' + this.remote_type + '/' + this.group_id;
       var returnValue = JSON.parse(await this.platform.apiCall(path));
 
-      this.platform.debugLog(['\n', '[getBrightness] GET Request: ' + path, 'returned JSON Object: ', returnValue]);
+      this.platform.debugLog(['[getBrightness] GET Request: ' + path, 'returned JSON Object: ', returnValue]);
 
       if(returnValue.bulb_mode === 'night'){
         brightness = 1; //set brightness to 1 if night_mode is enabled
@@ -472,6 +516,9 @@ class MiLight {
 
   setBrightness (level, callback) {
     this.designatedState.level = level;
+
+    this.platform.debugLog(['[setBrightness] ' + level]);
+
     this.stateChange();
     callback(null);
   }
@@ -485,7 +532,7 @@ class MiLight {
       var path = '/gateways/' + '0x' + this.device_id.toString(16) + '/' + this.remote_type + '/' + this.group_id;
       var returnValue = JSON.parse(await this.platform.apiCall(path));
 
-      this.platform.debugLog(['\n', '[getHue] GET Request: ' + path, 'returned JSON Object: ', returnValue]);
+      this.platform.debugLog(['[getHue] GET Request: ' + path, 'returned JSON Object: ', returnValue]);
 
       if(returnValue.bulb_mode === "color"){
         var calculatedHS = this.platform.RGBtoHS(returnValue.color.r, returnValue.color.g, returnValue.color.b);
@@ -498,6 +545,9 @@ class MiLight {
 
   setHue (value, callback) {
     this.designatedState.hue = value;
+
+    this.platform.debugLog(['[setHue] ' + value]);
+
     this.stateChange();
     callback(null);
   }
@@ -511,7 +561,7 @@ class MiLight {
       var path = '/gateways/' + '0x' + this.device_id.toString(16) + '/' + this.remote_type + '/' + this.group_id;
       var returnValue = JSON.parse(await this.platform.apiCall(path));
 
-      this.platform.debugLog(['\n', '[getSaturation] GET Request: ' + path, 'returned JSON Object: ', returnValue]);
+      this.platform.debugLog(['[getSaturation] GET Request: ' + path, 'returned JSON Object: ', returnValue]);
 
       if(returnValue.bulb_mode === "color"){
         var calculatedHS = this.platform.RGBtoHS(returnValue.color.r, returnValue.color.g, returnValue.color.b);
@@ -524,6 +574,9 @@ class MiLight {
 
   setSaturation (value, callback) {
     this.designatedState.saturation = value;
+
+    this.platform.debugLog(['[setSaturation] ' + value]);
+
     this.stateChange();
     callback(null);
   }
@@ -537,7 +590,7 @@ class MiLight {
       var path = '/gateways/' + '0x' + this.device_id.toString(16) + '/' + this.remote_type + '/' + this.group_id;
       var returnValue = JSON.parse(await this.platform.apiCall(path));
 
-      this.platform.debugLog(['\n', '[getColorTemperature] GET Request: ' + path, 'returned JSON Object: ', returnValue]);
+      this.platform.debugLog(['[getColorTemperature] GET Request: ' + path, 'returned JSON Object: ', returnValue]);
 
       if(returnValue.bulb_mode === "color"){
         callback(null, null);
@@ -550,6 +603,9 @@ class MiLight {
 
   setColorTemperature (value, callback) {
     this.designatedState.color_temp = value;
+
+    this.platform.debugLog(['[setColorTemperature] ' + value]);
+
     this.stateChange();
     callback(null);
   }
