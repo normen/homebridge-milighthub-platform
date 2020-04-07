@@ -3,6 +3,7 @@ const packageJSON = require('./package.json');
 
 var http = require('http');
 var mqtt = require('mqtt');
+
 var Accessory, Service, Characteristic, UUIDGen;
 
 
@@ -88,7 +89,10 @@ class MiLightHubPlatform {
 
   getServerLightList () {
     const platform = this;
-    this.apiCall('/settings').then(response => {
+    const settings_path = '/settings';
+
+    this.debugLog('Querying ' + settings_path);
+    this.apiCall(settings_path).then(response => {
       if (response) {
         var lightList = [];
         const settings = JSON.parse(response);
@@ -173,8 +177,8 @@ class MiLightHubPlatform {
       return true;
     } else {
       var path = '/gateways/' + '0x' + deviceId.toString(16) + '/' + remoteType + '/' + groupId;
+      this.debugLog(['Sending PUT request to: ' + path, command]);
       this.apiCall(path, command);
-      this.log(path, command);
     }
   }
 
@@ -251,6 +255,8 @@ class MiLightHubPlatform {
       s: Math.round(100 * (0 === max ? 0 : a / max))
     };
   }
+
+
 }
 
 class MiLight {
@@ -476,7 +482,7 @@ class MiLight {
       var path = '/gateways/' + '0x' + this.device_id.toString(16) + '/' + this.remote_type + '/' + this.group_id;
       var returnValue = JSON.parse(await this.platform.apiCall(path));
 
-      this.platform.debugLog(['[getPowerState] GET Request: ' + path, 'returned JSON Object: ', returnValue]);
+      this.platform.debugLog(['[getPowerState] GET Request']);
 
       callback(null, returnValue.state === 'ON' || returnValue.bulb_mode === 'night');
     }
@@ -502,7 +508,7 @@ class MiLight {
       var path = '/gateways/' + '0x' + this.device_id.toString(16) + '/' + this.remote_type + '/' + this.group_id;
       var returnValue = JSON.parse(await this.platform.apiCall(path));
 
-      this.platform.debugLog(['[getBrightness] GET Request: ' + path, 'returned JSON Object: ', returnValue]);
+      this.platform.debugLog(['[getBrightness] GET Request']);
 
       if(returnValue.bulb_mode === 'night'){
         brightness = 1; //set brightness to 1 if night_mode is enabled
@@ -532,7 +538,7 @@ class MiLight {
       var path = '/gateways/' + '0x' + this.device_id.toString(16) + '/' + this.remote_type + '/' + this.group_id;
       var returnValue = JSON.parse(await this.platform.apiCall(path));
 
-      this.platform.debugLog(['[getHue] GET Request: ' + path, 'returned JSON Object: ', returnValue]);
+      this.platform.debugLog(['[getHue] GET Request']);
 
       if(returnValue.bulb_mode === "color"){
         var calculatedHS = this.platform.RGBtoHS(returnValue.color.r, returnValue.color.g, returnValue.color.b);
@@ -561,7 +567,7 @@ class MiLight {
       var path = '/gateways/' + '0x' + this.device_id.toString(16) + '/' + this.remote_type + '/' + this.group_id;
       var returnValue = JSON.parse(await this.platform.apiCall(path));
 
-      this.platform.debugLog(['[getSaturation] GET Request: ' + path, 'returned JSON Object: ', returnValue]);
+      this.platform.debugLog(['[getSaturation] GET Request']);
 
       if(returnValue.bulb_mode === "color"){
         var calculatedHS = this.platform.RGBtoHS(returnValue.color.r, returnValue.color.g, returnValue.color.b);
@@ -590,7 +596,7 @@ class MiLight {
       var path = '/gateways/' + '0x' + this.device_id.toString(16) + '/' + this.remote_type + '/' + this.group_id;
       var returnValue = JSON.parse(await this.platform.apiCall(path));
 
-      this.platform.debugLog(['[getColorTemperature] GET Request: ' + path, 'returned JSON Object: ', returnValue]);
+      this.platform.debugLog(['[getColorTemperature] GET Request']);
 
       if(returnValue.bulb_mode === "color"){
         callback(null, null);
