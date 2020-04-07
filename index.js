@@ -177,9 +177,8 @@ class MiLightHubPlatform {
       return true;
     } else {
       var path = '/gateways/' + '0x' + deviceId.toString(16) + '/' + remoteType + '/' + groupId;
-      this.debugLog(['Sending PUT request to: ' + path, command]);
+      this.log('SENT: ' + path, command);
       this.apiCall(path, command);
-      this.log(path, command);
     }
   }
 
