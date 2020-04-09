@@ -33,6 +33,7 @@ class MiLightHubPlatform {
     // controlling them in RGB+CCT mode lets the color saving / favorite function to malfunction
     this.rgbcct_mode = config['rgbcct_mode'] === null ? false : this.rgbcct_mode = config['rgbcct_mode'] !== false;
 
+    this.cachedPromises = [];
 
     // TODO: settings
     this.host = config.host || 'milight-hub.local';
@@ -182,52 +183,68 @@ class MiLightHubPlatform {
     }
   }
 
-  async apiCall (path, json = null) {
-    return new Promise(resolve => {
-      const url = 'http://' + this.host + path;
-
-      var http_header;
-      if(json === null){
-        http_header ={
-          method: 'GET'
-        };
-      } else {
-        var sendBody = JSON.stringify(json);
-        http_header ={
-          method: 'PUT',
-          headers: {
-            'Content-Length': sendBody.length
-          }
-        };
+  async apiCall (path, json = null, func) {
+    if (this.cachedPromises[path] === 'PENDING'){
+      this.debugLog('GET (dedup): ' + path);
+      return await this.cachedPromises[path + '_promise'];
+    } else {
+      this.debugLog('GET: ' + path);
+      if(path !== '/settings' && json === null){
+        this.cachedPromises[path] = 'PENDING';
       }
 
-      const req = http.request(url, http_header, res => {
-        let recvBody = '';
-        res.on('data', chunk => {
-          recvBody += chunk;
-        });
-        res.on('end', _ => {
-          // this.debugLog(['\n', 'GET request end - HTTP status code: ' + res.statusCode + '\nrecvBody: ', JSON.parse(recvBody)]);
-          if (res.statusCode === 200) {
-            resolve(recvBody);
-          } else {
-            resolve(false);
-          }
-        });
-      });
-      req.on('error', e => {
+      this.cachedPromises[path + '_promise'] = new Promise(resolve => {
+        const url = 'http://' + this.host + path;
+
+        var http_header;
         if(json === null){
-          console.log('error sending to Milight esp hub', url, json, e);
+          http_header ={
+            method: 'GET'
+          };
         } else {
-          console.log('error sending to Milight esp hub', url, e);
+          var sendBody = JSON.stringify(json);
+          http_header ={
+            method: 'PUT',
+            headers: {
+              'Content-Length': sendBody.length
+            }
+          };
         }
-        resolve(false);
+
+        const req = http.request(url, http_header, res => {
+          let recvBody = '';
+          res.on('data', chunk => {
+            recvBody += chunk;
+          });
+          res.on('end', _ => {
+            // this.debugLog(['\n', 'GET request end - HTTP status code: ' + res.statusCode + '\nrecvBody: ', JSON.parse(recvBody)]);
+            if (res.statusCode === 200) {
+              resolve(recvBody);
+            } else {
+              resolve(false);
+            }
+            this.cachedPromises[path] = 'new run';
+          });
+        });
+        req.on('error', e => {
+          if(json === null){
+            console.log('error sending to Milight esp hub', url, json, e);
+          } else {
+            console.log('error sending to Milight esp hub', url, e);
+          }
+          resolve(false);
+          this.cachedPromises[path] = 'new run';
+        });
+        if(json !== null){
+          req.write(sendBody);
+        }
+        req.end();
       });
-      if(json !== null){
-        req.write(sendBody);
-      }
-      req.end();
-    });
+
+      return this.cachedPromises[path + "_promise"];
+    }
+
+
   }
 
   //RGBtoHSV by Garry Tan from https://axonflux.com/handy-rgb-to-hsl-and-rgb-to-hsv-color-model-c with some modifications
