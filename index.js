@@ -499,7 +499,7 @@ class MiLight {
 
   /** MiLight shiz */
   async getPowerState (callback) {
-    if (this.mqttClient) {
+    if (this.platform.mqttClient) {
       // TODO: implement getPowerState via MQTT
       //not implemented yet so return null
       callback(null, null);
@@ -525,7 +525,7 @@ class MiLight {
   async getBrightness (callback) {
     var brightness;
 
-    if (this.mqttClient) {
+    if (this.platform.mqttClient) {
       // TODO: implement getBrightness via MQTT
       // not implemented yet so return null
       callback(null, null);
@@ -555,7 +555,7 @@ class MiLight {
   }
 
   async getHue (callback) {
-    if (this.mqttClient) {
+    if (this.platform.mqttClient) {
       // TODO: implement getHue via MQTT
       //not implemented yet so return null
       callback(null, null);
@@ -584,7 +584,7 @@ class MiLight {
   }
 
   async getSaturation (callback) {
-    if (this.mqttClient) {
+    if (this.platform.mqttClient) {
       // TODO: implement getSaturation via MQTT
       //not implemented yet so return null
       callback(null, null);
@@ -613,7 +613,7 @@ class MiLight {
   }
 
   async getColorTemperature (callback) {
-    if (this.mqttClient) {
+    if (this.platform.mqttClient) {
       // TODO: implement getBrightness via MQTT
       // not implemented yet so return null
       callback(null, null);
