@@ -187,6 +187,11 @@ class MiLightHubPlatform {
   }
 
   async apiCall (path, json = null, func) {
+    // MiLight Hub lets you know all properties of the device on one HTTP request.
+    // Unfortunately HomeKit queries each characteristic separately, so we've build a dedup function
+    // It looks if the current job is already in Promise state 'PENDING' (running)
+    // If yes return the same promise from cache --> don't start a new one(!)
+    // If no start a promise, cache it and return this
     if (this.cachedPromises[path] === 'PENDING'){
       this.debugLog('GET (dedup): ' + path);
       return await this.cachedPromises[path + '_promise'];
