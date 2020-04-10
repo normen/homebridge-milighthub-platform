@@ -36,7 +36,7 @@
       "title": "Force HTTP instaed of MQTT",
       "type": "boolean",
       "default": false,
-      "description": "Force use of HTTP regardless of mqtt settings in your MiLight hub",
+      "description": "Force use of HTTP regardless of MQTT settings in your MiLight hub",
       "required": false
     },
     "debug": {
