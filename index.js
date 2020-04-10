@@ -23,16 +23,16 @@ class MiLightHubPlatform {
     var platform = this;
     this.log = log;
     this.config = config;
-    this.backchannel = config['backchannel'] || false;
-    this.forceHTTP = config['forceHTTP'] || false;
-    this.debug = config['debug'] || false;
+    this.backchannel = config.backchannel || false;
+    this.forceHTTP = config.forceHTTP || false;
+    this.debug = config.debug || false;
 
     // according to https://github.com/apple/HomeKitADK/blob/master/HAP/HAPCharacteristicTypes.h this is a unsupported combination:
     // "This characteristic must not be used for lamps which support color."
     // but let the user choose because the RGB+CCT lamps do have seperate LEDs for the white temperatures and seperate for the RGB colors
     // controlling them in RGB mode lets seem the RGB screen to be buggy (orange colors will sometimes change to white_mode)
     // controlling them in RGB+CCT mode lets the color saving / favorite function to malfunction
-    this.rgbcctMode = config['rgbcctMode'] === null ? false : this.rgbcctMode = config['rgbcctMode'] !== false;
+    this.rgbcctMode = config.rgbcctMode === null ? false : this.rgbcctMode = config.rgbcctMode !== false;
 
     this.cachedPromises = [];
 
