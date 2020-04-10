@@ -48,7 +48,7 @@ class MiLightHubPlatform {
       // Platform Plugin should only register new accessory that doesn't exist in homebridge after this event.
       // Or start discover new accessories.
       this.api.on('didFinishLaunching', function () {
-        // platform.log('DidFinishLaunching');
+        platform.debugLog('DidFinishLaunching');
         platform.getServerLightList();
       });
     }
