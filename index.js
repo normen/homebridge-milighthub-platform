@@ -31,7 +31,7 @@ class MiLightHubPlatform {
     // but let the user choose because the RGB+CCT lamps do have seperate LEDs for the white temperatures and seperate for the RGB colors
     // controlling them in RGB mode lets seem the RGB screen to be buggy (orange colors will sometimes change to white_mode)
     // controlling them in RGB+CCT mode lets the color saving / favorite function to malfunction
-    this.rgbcct_mode = config['rgbcct_mode'] === null ? false : this.rgbcct_mode = config['rgbcct_mode'] !== false;
+    this.rgbcctMode = config['rgbcctMode'] === null ? false : this.rgbcctMode = config['rgbcctMode'] !== false;
 
     this.cachedPromises = [];
 
@@ -325,7 +325,7 @@ class MiLight {
       lightbulbService.addCharacteristic(new Characteristic.Hue());
     }
 
-    if (this.platform.rgbcct_mode && ['fut089', 'cct', 'rgb_cct'].indexOf(this.remote_type) > -1) {
+    if (this.platform.rgbcctMode && ['fut089', 'cct', 'rgb_cct'].indexOf(this.remote_type) > -1) {
       lightbulbService
           .addCharacteristic(new Characteristic.ColorTemperature())
           // maxValue 370 = 2700K (1000000/2700)
@@ -391,7 +391,7 @@ class MiLight {
     }
 
 
-    if(this.platform.rgbcct_mode && (lightbulbService.getCharacteristic(Characteristic.ColorTemperature))) {
+    if(this.platform.rgbcctMode && (lightbulbService.getCharacteristic(Characteristic.ColorTemperature))) {
       this.platform.debugLog('Characteristic.ColorTemperature is set');
 
       if(this.platform.backchannel) {
@@ -465,7 +465,7 @@ class MiLight {
       cstate.hue = dstate.hue;
     }
 
-    if(!this.platform.rgbcct_mode){
+    if(!this.platform.rgbcctMode){
       let useWhiteMode = this.testWhiteMode(dstate.hue, dstate.saturation);
       if(useWhiteMode){
         delete command.saturation;
