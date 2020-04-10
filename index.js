@@ -24,6 +24,7 @@ class MiLightHubPlatform {
     this.log = log;
     this.config = config;
     this.backchannel = config['backchannel'] || false;
+    this.forceHTTP = config['forceHTTP'] || false;
     this.debug = config['debug'] || false;
 
     // according to https://github.com/apple/HomeKitADK/blob/master/HAP/HAPCharacteristicTypes.h this is a unsupported combination:
@@ -107,7 +108,7 @@ class MiLightHubPlatform {
             platform.mqttClient = null;
           }
           // TODO: user / pass
-          if (platform.mqttServer) {
+          if (platform.mqttServer && !(platform.forceHTTP)) {
             platform.log('Using MQTT server at ' + platform.mqttServer);
             platform.mqttClient = mqtt.connect('mqtt://' + platform.mqttServer);
           } else {
