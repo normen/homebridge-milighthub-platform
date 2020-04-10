@@ -110,6 +110,8 @@ class MiLightHubPlatform {
           if (platform.mqttServer) {
             platform.log('Using MQTT server at ' + platform.mqttServer);
             platform.mqttClient = mqtt.connect('mqtt://' + platform.mqttServer);
+          } else {
+            platform.log('Using HTTP server at ' + platform.host);
           }
         }
         for (var name in settings.group_id_aliases) {
