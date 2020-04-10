@@ -228,9 +228,9 @@ class MiLightHubPlatform {
         });
         req.on('error', e => {
           if(json === null){
-            console.log('error sending to Milight esp hub', url, json, e);
+            console.log('Error sending to MiLight ESP hub', url, json, e);
           } else {
-            console.log('error sending to Milight esp hub', url, e);
+            console.log('Error sending to MiLight ESP hub', url, e);
           }
           resolve(false);
           this.cachedPromises[path] = 'new run';
