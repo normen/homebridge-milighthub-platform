@@ -40,8 +40,9 @@ This plugin is a WIP, check below for the current limitations.
 #### Options
  - `host` Hostname of your MiLight Hub, default `milight-hub.local`
  - `backchannel` Enables/Disables backchannel, currently limited to http only, default `false` (disabled)
- - `rgbcct_mode` Enables ColorTemperature characteristic which is unsupported by HomeKit in combination with RGB characteristics but gives you a more accurate control of your lights at the expense of not supporting favorite colors in Home App anymore, default `false` (disabled)
- --- further explanation at the bottom
+ - `rgbcctMode` Enables ColorTemperature characteristic which is unsupported by HomeKit in combination with RGB characteristics but gives you a more accurate control of your lights at the expense of not supporting favourite colors in Home App anymore, default `false` (disabled)
+ --- further explanation at the bottom 
+ - `forceHTTP` Force use of HTTP regardless of MQTT settings in your MiLight hub, default `false` (disabled)
  - `debug` Enables/Disables debug mode, default `false` (disabled)
 
 ## Usage
@@ -54,4 +55,4 @@ If MQTT is configured in the MiLight Hub then the plugin will automatically read
 
 ## Limitation
 #### RGB+CCT lamps
-RGB+CCT (or RGBWW) milights have two modes, color tempurature or RGB. Unfurtunately HomeKit does not support lights with both modes, so it's not supported to expose both rgb and kelvin properties to Homekit. The default mode exposes only an RGB property, but detects when you set a color that is close to the colors used in the tempurature circle in HomeKit and uses the color tempurature mode on the milights in this case. This way you can still make use of favorite light-settings in the Home app. If you want to expose both properties anyway you can enable the RGB+CCT mode.
+RGB+CCT (or RGBWW) milights have two modes, color tempurature or RGB. Unfurtunately HomeKit does not support lights with both modes, so it's not supported to expose both RGB and Kelvin properties to Homekit. The default mode exposes only an RGB property, but detects when you set a color that is close to the colors used in the tempurature circle in HomeKit and uses the color tempurature mode on the milights in this case. This way you can still make use of favourite light-settings in the Home app. If you want to expose both properties anyway you can enable the RGB+CCT mode.
