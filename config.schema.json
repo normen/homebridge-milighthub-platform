@@ -19,21 +19,28 @@
       "required": false
     },
     "backchannel": {
-      "title": "Backchannel",
+      "title": "Backchannel enabled",
       "type": "boolean",
       "default": false,
       "description": "If enabled HomeKit does update if MiLight hub is controlled otherwise, currently limited to http only",
       "required": false
     },
-    "rgbcct_mode": {
-      "title": "RGB+CCT mode",
+    "rgbcctMode": {
+      "title": "RGB+CCT mode enabled",
       "type": "boolean",
       "default": false,
       "description": "Enables ColorTemperature characteristic which is unsupported by HomeKit in combination with RGB characteristics but gives you a more accurate control of your lights at the expense of not supporting favorite colors in Home App anymore.",
       "required": false
     },
+    "forceHTTP": {
+      "title": "Force HTTP instaed of MQTT",
+      "type": "boolean",
+      "default": false,
+      "description": "Force use of HTTP regardless of mqtt settings in your MiLight hub",
+      "required": false
+    },
     "debug": {
-      "title": "Debug mode",
+      "title": "Debug mode enabled",
       "type": "boolean",
       "default": false,
       "description": "Enables debug mode",
