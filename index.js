@@ -324,9 +324,7 @@ class MiLight {
     const lightbulbService = new Service.Lightbulb(this.name);
     lightbulbService.addCharacteristic(new Characteristic.Brightness());
 
-    // TODO: check types of remotes and corresponding characteristics
-    // TYPES: "rgbw" "cct" "rgb_cct" "rgb" "fut089" "fut091" "fut020"
-    if (['cct', 'fut091'].indexOf(this.remote_type) === -1) {
+    if (['rgbw', 'cct', 'fut091'].indexOf(this.remote_type) === -1) {
       lightbulbService.addCharacteristic(new Characteristic.Saturation());
       lightbulbService.addCharacteristic(new Characteristic.Hue());
     }
