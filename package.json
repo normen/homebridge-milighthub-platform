@@ -29,7 +29,8 @@
     "mqtt": "^3.0.0"
   },
   "engines": {
-    "homebridge": "^0.4.50"
+    "homebridge": "^0.4.50",
+    "node" : ">=10.12"
   },
   "devDependencies": {
     "homebridge": "^0.4.50"

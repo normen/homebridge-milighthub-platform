@@ -3,6 +3,8 @@ const packageJSON = require('./package.json');
 
 var http = require('http');
 var mqtt = require('mqtt');
+var fs   = require('fs');
+var path = require('path');
 
 var Accessory, Service, Characteristic, UUIDGen;
 
@@ -33,6 +35,9 @@ class MiLightHubPlatform {
     // controlling them in RGB mode lets seem the RGB screen to be buggy (orange colors will sometimes change to white_mode)
     // controlling them in RGB+CCT mode lets the color saving / favorite function to malfunction
     this.rgbcctMode = config.rgbcctMode === null ? false : this.rgbcctMode = config.rgbcctMode !== false;
+
+    this.rgbcctRemotes = ['rgbw', 'cct', 'fut091'];
+    this.rgbcctRemotes = ['fut089', 'cct', 'rgb_cct'];
 
     this.cachedPromises = [];
 
@@ -131,6 +136,63 @@ class MiLightHubPlatform {
 
   syncLightLists (lightList) {
     const platform = this;
+
+    // Remove light from HomeKit
+    this.accessories.forEach((milight, idx) => {
+      var found = false;
+      var characteristicsMatch = true;
+      lightList.forEach(lightInfo => {
+        if (milight.group_id === lightInfo.group_id &&
+            milight.device_id === lightInfo.device_id &&
+            milight.remote_type === lightInfo.remote_type &&
+            milight.name === lightInfo.name) {
+          // already exists
+          found = true;
+        }
+      });
+
+      var characteristicsCacheDirPath = path.join(__dirname , 'cache', '0x' + milight.device_id.toString(16), milight.remote_type.toString());
+      var characteristicsCacheFilePath = path.join(characteristicsCacheDirPath , milight.group_id.toString() + '_characteristics.log');
+
+      if(found){
+        if (fs.existsSync(characteristicsCacheFilePath)){
+          const HAPOnCharacteristic = '00000025-0000-1000-8000-0026BB765291'; // 00000025-0000-1000-8000-0026BB765291 = 'On' - Use the power characteristic to determine if backchannel was enabled in lastState
+          const HAPColorTemperatureCharacteristic = '000000CE-0000-1000-8000-0026BB765291'; // 00000025-0000-1000-8000-0026BB765291 = 'ColorTemperature' - Use the ColorTemperature characteristic to determine if rgbcctMode is applied correctly
+
+          var cachedData = JSON.parse(fs.readFileSync(characteristicsCacheFilePath));
+          var cachedDateEventsCount = parseInt(cachedData[HAPOnCharacteristic]['_eventsCount']);
+          var miLightCharacteristics = JSON.parse(milight.characteristics);
+          var miLightCharacteristicsEventsCount = parseInt(miLightCharacteristics[HAPOnCharacteristic]['_eventsCount']);
+
+          // check if backchannel matches with set state
+          if(cachedDateEventsCount !== miLightCharacteristicsEventsCount){
+            this.debugLog('Backchannel characteristics mismatch detected, Removing accessory!');
+            characteristicsMatch = false;
+          }
+
+          // check if rgbcctMode matches with set state
+          if (platform.rgbcctRemotes.indexOf(milight.remote_type) > -1 && ((platform.rgbcctMode && !cachedData[HAPColorTemperatureCharacteristic]) || (!platform.rgbcctMode && cachedData[HAPColorTemperatureCharacteristic]))) {
+            this.debugLog('ColorTemperature Characteristics mismatch detected, Removing accessory!');
+            characteristicsMatch = false;
+          }
+        } else {
+          characteristicsMatch = false;
+        }
+      }
+
+      if (!found || !characteristicsMatch) {
+        this.log('Removing ' + milight.name + ' from Homekit');
+        this.accessories.splice(idx, 1);
+
+        if (fs.existsSync(characteristicsCacheFilePath)){
+          fs.unlinkSync(characteristicsCacheFilePath);
+        }
+
+        this.api.unregisterPlatformAccessories('homebridge-milighthub-platform', 'MiLightHubPlatform', [milight.accessory]);
+      }
+    });
+
+    // Add light to HomeKit
     lightList.forEach(lightInfo => {
       var found = false;
       this.accessories.forEach(milight => {
@@ -141,32 +203,27 @@ class MiLightHubPlatform {
           found = true;
         }
       });
+
       if (!found) {
         this.log('Adding ' + lightInfo.name + ' to Homekit');
         const milight = new MiLight(platform, lightInfo);
         this.accessories.push(milight);
+
+        var characteristicsCacheDirPath = path.join(__dirname , 'cache', '0x' + milight.device_id.toString(16), milight.remote_type.toString());
+        var characteristicsCacheFilePath = path.join(characteristicsCacheDirPath , milight.group_id.toString() + '_characteristics.log');
+
+        if (!fs.existsSync(characteristicsCacheDirPath)){
+          fs.mkdirSync(characteristicsCacheDirPath, { recursive: true });
+        }
+
+        fs.writeFileSync(characteristicsCacheFilePath, milight.characteristics);
+        platform.debugLog('Created ' + characteristicsCacheFilePath + ' with characteristics');
+
         this.api.registerPlatformAccessories('homebridge-milighthub-platform', 'MiLightHubPlatform', [milight.accessory]);
       }
     });
-
-    this.accessories.forEach((milight, idx) => {
-      var found = false;
-      lightList.forEach(lightInfo => {
-        if (milight.group_id === lightInfo.group_id &&
-            milight.device_id === lightInfo.device_id &&
-            milight.remote_type === lightInfo.remote_type &&
-            milight.name === lightInfo.name) {
-          // already exists
-          found = true;
-        }
-      });
-      if (!found) {
-        this.log('Removing ' + milight.name + ' from Homekit');
-        this.accessories.splice(idx, 1);
-        this.api.unregisterPlatformAccessories('homebridge-milighthub-platform', 'MiLightHubPlatform', [milight.accessory]);
-      }
-    });
   }
+
 
   sendCommand (deviceId, remoteType, groupId, command) {
     if (this.mqttClient) {
@@ -286,14 +343,13 @@ class MiLightHubPlatform {
 
 class MiLight {
   constructor (platform, accessory) {
-    this.log = platform.log;
     this.platform = platform;
     if (accessory instanceof Accessory) {
       this.accessory = accessory;
     } else {
       // new accessory object
       var uuid = UUIDGen.generate(accessory.name);
-      this.log('Creating new accessory for ' + accessory.name + ' [' + uuid + ']');
+      this.platform.log('Creating new accessory for ' + accessory.name + ' [' + uuid + ']');
       this.accessory = new Accessory(accessory.name, uuid);
       this.accessory.context.light_info = accessory;
       this.addServices(this.accessory);
@@ -306,6 +362,18 @@ class MiLight {
     this.applyCallbacks(this.accessory);
     this.currentState = { state: false, level: 100, saturation: 0, hue: 0, color_temp: 0 };
     this.designatedState = {};
+    this.characteristics = {};
+
+    for (let services of this.accessory.services) {
+      var service = JSON.parse(JSON.stringify(services));
+
+      for (let characteristic of service.characteristics){
+        this.characteristics[characteristic.UUID] = characteristic;
+      }
+    }
+
+    this.characteristics = JSON.stringify(this.characteristics);
+
     this.myTimeout = null;
   }
 
@@ -324,12 +392,12 @@ class MiLight {
     const lightbulbService = new Service.Lightbulb(this.name);
     lightbulbService.addCharacteristic(new Characteristic.Brightness());
 
-    if (['rgbw', 'cct', 'fut091'].indexOf(this.remote_type) === -1) {
+    if (this.platform.rgbRemotes.indexOf(this.remote_type) === -1) {
       lightbulbService.addCharacteristic(new Characteristic.Saturation());
       lightbulbService.addCharacteristic(new Characteristic.Hue());
     }
 
-    if (this.platform.rgbcctMode && ['fut089', 'cct', 'rgb_cct'].indexOf(this.remote_type) > -1) {
+    if (this.platform.rgbcctMode && this.platform.rgbcctRemotes.indexOf(this.remote_type) > -1) {
       lightbulbService
           .addCharacteristic(new Characteristic.ColorTemperature())
           // maxValue 370 = 2700K (1000000/2700)
