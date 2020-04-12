@@ -14,11 +14,6 @@ This plugin is a WIP, check below for the current limitations.
 - Currently no password support for MiLight Hub or MQTT server
 - Currently only RGB(W) + RGB+CCT lamps have been confirmed to work, others *might* work as well
 - Currently no backchannel for mqtt, HomeKit doesn't update if MiLight hub is controlled otherwise
-- Currently some options like backchannel, rgbcctMode need a manual re-add of accessories before being active. 
-If you don't do a re-add they may behave weird or the plugin may crash.
-Re-adding is done as follows: Go to your Milight Hub, select an alias and remove it.
-Wait until you see that the accessory was deleted in the homebridge logs.
-After that add it again. Repeat above steps for every alias.
 
 ## Installation
 1. Install homebridge using: npm install -g homebridge
