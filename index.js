@@ -36,7 +36,7 @@ class MiLightHubPlatform {
     // controlling them in RGB+CCT mode lets the color saving / favorite function to malfunction
     this.rgbcctMode = config.rgbcctMode === null ? false : this.rgbcctMode = config.rgbcctMode !== false;
 
-    this.rgbcctRemotes = ['rgbw', 'cct', 'fut091'];
+    this.rgbRemotes = ['rgbw', 'cct', 'fut091'];
     this.rgbcctRemotes = ['fut089', 'cct', 'rgb_cct'];
 
     this.cachedPromises = [];
