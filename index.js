@@ -3,8 +3,6 @@ const packageJSON = require('./package.json');
 
 var http = require('http');
 var mqtt = require('mqtt');
-var fs   = require('fs');
-var path = require('path');
 
 var Accessory, Service, Characteristic, UUIDGen;
 
