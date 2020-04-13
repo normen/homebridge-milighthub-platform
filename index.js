@@ -150,15 +150,24 @@ class MiLightHubPlatform {
           // already exists
           found = true;
 
-          if(found && platform.characteristicDetails !== JSON.parse(milight.characteristics)[HAPModelCharacteristic].value){
+          if(found && platform.characteristicDetails !== milight.characteristics[HAPModelCharacteristic].value){
             this.debugLog('Characteristics mismatch detected, Removing accessory!');
             characteristicsMatch = false;
           }
+
         }
       });
 
       if (!found || !characteristicsMatch) {
-        this.log('Removing ' + milight.name + ' from Homekit');
+        let removeMessage = 'Removing ' + milight.name + ' from Homekit because ';
+
+        if(!found){
+          removeMessage += 'it could not be find in MiLight Hub';
+        } else {
+          removeMessage += 'a characteristics mismatch was detected';
+        }
+
+        this.log(removeMessage);
         this.accessories.splice(idx, 1);
 
         this.api.unregisterPlatformAccessories('homebridge-milighthub-platform', 'MiLightHubPlatform', [milight.accessory]);
@@ -271,8 +280,6 @@ class MiLightHubPlatform {
 
       return this.cachedPromises[path + "_promise"];
     }
-
-
   }
 
   //RGBtoHSV by Garry Tan from https://axonflux.com/handy-rgb-to-hsl-and-rgb-to-hsv-color-model-c with some modifications
@@ -335,7 +342,7 @@ class MiLight {
       }
     }
 
-    this.characteristics = JSON.stringify(this.characteristics);
+    this.characteristics = JSON.parse(JSON.stringify(this.characteristics));
 
     this.myTimeout = null;
   }
