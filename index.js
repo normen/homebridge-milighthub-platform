@@ -109,6 +109,7 @@ class MiLightHubPlatform {
           platform.mqttUser = settings.mqtt_username;
           platform.mqttPass = settings.mqtt_password;
           platform.mqttTopicPattern = settings.mqtt_topic_pattern;
+          platform.mqttStateTopicPattern = settings.mqtt_state_topic_pattern;
           if (platform.mqttClient) {
             platform.mqttClient.end();
             platform.mqttClient = null;
@@ -116,7 +117,7 @@ class MiLightHubPlatform {
           // TODO: user / pass
           if (platform.mqttServer && !(platform.forceHTTP)) {
             platform.log('Using MQTT server at ' + platform.mqttServer);
-            platform.mqttClient = mqtt.connect('mqtt://' + platform.mqttServer);
+            this.initializeMQTT();
           } else {
             platform.log('Using HTTP server at ' + platform.host);
           }
@@ -154,6 +155,8 @@ class MiLightHubPlatform {
           if(found && platform.characteristicDetails !== milight.characteristics[HAPModelCharacteristic].value) {
             this.debugLog('Characteristics mismatch detected, Removing accessory!');
             characteristicsMatch = false;
+          } else if(found && this.backchannel && platform.mqttClient){
+            this.subscribeMQTT(milight);
           }
         }
       });
@@ -169,6 +172,10 @@ class MiLightHubPlatform {
 
         this.log(removeMessage);
         this.accessories.splice(idx, 1);
+
+        if(platform.mqttClient){
+          this.unsubscribeMQTT(milight);
+        }
 
         this.api.unregisterPlatformAccessories('homebridge-milighthub-platform', 'MiLightHubPlatform', [milight.accessory]);
       }
@@ -278,6 +285,49 @@ class MiLightHubPlatform {
       });
 
       return this.cachedPromises[path + "_promise"];
+    }
+  }
+
+  initializeMQTT(){
+    var platform = this;
+
+    platform.mqttClient = mqtt.connect('mqtt://' + platform.mqttServer);
+
+    if(platform.backchannel && platform.mqttClient._events.message === undefined){
+      platform.mqttClient.on('message',function(topic, message, packet){ // create a listener if no one was created yet
+        platform.accessories.forEach(function(milight){
+          var mqttCurrentLightPath = platform.mqttStateTopicPattern.replace(':hex_device_id', '0x' + milight.device_id.toString(16).toUpperCase()).replace(':device_type', milight.remote_type).replace(':group_id', milight.group_id);
+
+          if(topic.includes(mqttCurrentLightPath)){
+            var returnValue = JSON.parse(message);
+            platform.debugLog('Incoming MQTT message: ' + returnValue);
+
+            milight.currentState.state = returnValue.state === 'ON' || returnValue.bulb_mode === 'night';
+            milight.currentState.level = returnValue.bulb_mode === 'night' ? 1 : Math.round(returnValue.brightness / 2.55);
+
+            milight.currentState.hue = returnValue.bulb_mode === 'color' ? (platform.RGBtoHueSaturation(returnValue.color.r, returnValue.color.g, returnValue.color.b)).h : (platform.HomeKitColorTemperatureToHueSaturation(returnValue.color_temp)).h;
+            milight.currentState.saturation = returnValue.bulb_mode === 'color' ? (platform.RGBtoHueSaturation(returnValue.color.r, returnValue.color.g, returnValue.color.b)).s : (platform.HomeKitColorTemperatureToHueSaturation(returnValue.color_temp)).s;
+
+            milight.currentState.color_temp = returnValue.bulb_mode === 'color' ? null : returnValue.color_temp;
+          }
+        })
+      });
+    }
+  }
+
+  subscribeMQTT(milight) {
+    var mqttPath = this.mqttStateTopicPattern.replace(':hex_device_id', '0x' + milight.device_id.toString(16).toUpperCase()).replace(':device_type', milight.remote_type).replace(':group_id', milight.group_id);
+
+    if(!Object.keys(this.mqttClient['_resubscribeTopics']).includes(mqttPath)){
+      this.mqttClient.subscribe(mqttPath);
+    }
+  }
+
+  unsubscribeMQTT(milight) {
+    var mqttPath = this.mqttStateTopicPattern.replace(':hex_device_id', '0x' + milight.device_id.toString(16).toUpperCase()).replace(':device_type', milight.remote_type).replace(':group_id', milight.group_id);
+
+    if(Object.keys(this.mqttClient['_resubscribeTopics']).includes(mqttPath)){
+      this.mqttClient.unsubscribe(mqttPath);
     }
   }
 
