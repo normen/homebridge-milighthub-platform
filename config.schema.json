@@ -18,6 +18,20 @@
       "description": "The hostname or IP address of the MiLight Hub",
       "required": false
     },
+    "httpUsername": {
+      "title": "Authorization: HTTP Username",
+      "type": "string",
+      "default": "",
+      "description": "If you are using a username:password authentication for your MiLight Hub type in here your credentials",
+      "required": false
+    },
+    "httpPassword": {
+      "title": "Authorization: HTTP Password",
+      "type": "string",
+      "default": "",
+      "description": "If you are using a username:password authentication for your MiLight Hub type in here your credentials",
+      "required": false
+    },
     "backchannel": {
       "title": "Backchannel enabled",
       "type": "boolean",

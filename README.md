@@ -10,10 +10,6 @@ This plugin is a WIP, check below for the current limitations.
 - Automatically uses MQTT if configured in the MiLight Hub
   - Using an MQTT broker can improve performance when using many lamps
 
-## WIP
-- Currently no password support for MiLight Hub or MQTT server
-- Currently only RGB(W) + RGB+CCT lamps have been confirmed to work, others *might* work as well
-
 ## Installation
 1. Install homebridge using: npm install -g homebridge
 2. Install this plugin using: npm install -g homebridge-milighthub-platform
@@ -41,6 +37,8 @@ This plugin is a WIP, check below for the current limitations.
  - `backchannel` Enables/Disables backchannel, currently limited to http only, default `false` (disabled)
  - `rgbcctMode` Enables ColorTemperature characteristic which is unsupported by HomeKit in combination with RGB characteristics but gives you a more accurate control of your lights at the expense of not supporting favourite colors in Home App anymore, default `false` (disabled)
  --- further explanation at the bottom 
+ - `httpUsername` If you are using a username:password authentication for your MiLight Hub type in here your credentials, default `null` (disabled)
+ - `httpPassword` If you are using a username:password authentication for your MiLight Hub type in here your credentials, default `null` (disabled)
  - `forceHTTP` Force use of HTTP regardless of MQTT settings in your MiLight hub, default `false` (disabled)
  - `debug` Enables/Disables debug mode, default `false` (disabled)
 

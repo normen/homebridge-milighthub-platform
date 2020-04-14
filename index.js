@@ -23,6 +23,8 @@ class MiLightHubPlatform {
     var platform = this;
     this.log = log;
     this.config = config;
+    this.httpUsername = config.httpUsername || null;
+    this.httpPassword = config.httpPassword || null;
     this.backchannel = config.backchannel || false;
     this.forceHTTP = config.forceHTTP || false;
     this.debug = config.debug || false;
@@ -57,6 +59,10 @@ class MiLightHubPlatform {
         platform.debugLog('DidFinishLaunching');
         platform.getServerLightList();
       });
+    }
+
+    if(this.httpUsername && this.httpPassword) {
+      this.debugLog('Using Basic Authorization!')
     }
   }
 
@@ -242,7 +248,8 @@ class MiLightHubPlatform {
         var http_header;
         if(json === null){
           http_header ={
-            method: 'GET'
+            method: 'GET',
+            headers: {}
           };
         } else {
           var sendBody = JSON.stringify(json);
@@ -252,6 +259,11 @@ class MiLightHubPlatform {
               'Content-Length': sendBody.length
             }
           };
+        }
+
+        if(this.httpUsername && this.httpPassword){
+          var base64AuthorizationHeader = new Buffer(this.httpUsername + ':' + this.httpPassword).toString('base64');
+          http_header.headers.Authorization = 'Basic ' + base64AuthorizationHeader;
         }
 
         const req = http.request(url, http_header, res => {
@@ -291,7 +303,16 @@ class MiLightHubPlatform {
   initializeMQTT(){
     var platform = this;
 
-    platform.mqttClient = mqtt.connect('mqtt://' + platform.mqttServer);
+    var mqtt_options = {
+      clientId:"homebridge_milight_hub"
+    };
+
+    if(platform.mqttUser !== "" && platform.mqttPass !== ""){
+      mqtt_options.username = platform.mqttUser;
+      mqtt_options.password = platform.mqttPass;
+    }
+
+    platform.mqttClient = mqtt.connect('mqtt://' + platform.mqttServer, mqtt_options);
 
     if(platform.backchannel && platform.mqttClient._events.message === undefined){
       platform.mqttClient.on('message',function(topic, message, packet){ // create a listener if no one was created yet
