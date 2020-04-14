@@ -44,7 +44,6 @@ class MiLightHubPlatform {
 
     this.cachedPromises = [];
 
-    // TODO: settings
     this.host = config.host || 'milight-hub.local';
     this.accessories = [];
 
@@ -120,7 +119,6 @@ class MiLightHubPlatform {
             platform.mqttClient.end();
             platform.mqttClient = null;
           }
-          // TODO: user / pass
           if (platform.mqttServer && !(platform.forceHTTP)) {
             platform.log('Using MQTT server at ' + platform.mqttServer);
             this.initializeMQTT();
@@ -582,7 +580,6 @@ class MiLight {
   }
 
   applyDesignatedState () {
-    // this.myTimeout = null;
     const dstate = this.designatedState;
     const cstate = this.currentState;
     this.designatedState = {};

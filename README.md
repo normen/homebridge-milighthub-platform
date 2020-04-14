@@ -49,7 +49,6 @@ To add lamps in HomeKit, add aliases to the MiLight Hub. The aliases will automa
 #### Using MQTT
 If MQTT is configured in the MiLight Hub then the plugin will automatically read those settings and use them to connect to MiLight Hub via MQTT. Make sure your MQTT topic pattern includes the `:device_id`, `:device_type` and `:group_id` values, as in the suggested default value `milight/:device_id/:device_type/:group_id`.
 
-
 ## Limitation
 #### RGB+CCT / RGBW(W) lamps
 RGB+CCT / RGBW(W) milights have two modes, color tempurature or RGB. Unfurtunately HomeKit does not support lights with both modes, so it's not supported to expose both RGB and Kelvin properties to Homekit. The default mode exposes only an RGB property, but detects when you set a color that is close to the colors used in the tempurature circle in HomeKit and uses the color tempurature mode on the milights in this case. This way you can still make use of favourite light-settings in the Home app. If you want to expose both properties anyway you can enable the RGB+CCT mode.
