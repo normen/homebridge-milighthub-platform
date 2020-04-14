@@ -36,8 +36,9 @@ class MiLightHubPlatform {
 
     this.characteristicDetails = '0x' + (this.backchannel ? 1 : 0).toString() + ',0x' + (this.rgbcctMode ? 1 : 0).toString();
 
-    this.rgbRemotes = ['rgbw', 'cct', 'fut091'];
-    this.rgbcctRemotes = ['fut089', 'cct', 'rgb_cct'];
+    this.whiteRemotes = ['cct', 'fut091'];        // only Cold white + Warm white remotes
+    this.rgbRemotes = ['rgbw', 'rgb', 'fut020'];  // only RGB remotes
+    this.rgbcctRemotes = ['fut089', 'rgb_cct'];   // RGB + Cold white + Warm white remotes
 
     this.cachedPromises = [];
 
@@ -64,7 +65,7 @@ class MiLightHubPlatform {
     if (!this.config) { // happens if plugin is disabled and still active accessories
       return;
     }
-    this.log('Restoring ' + accessory.displayName + ' from Homekit');
+    this.log('Restoring ' + accessory.displayName + ' from HomeKit');
     accessory.reachable = true;
     this.accessories.push(new MiLight(this, accessory));
   }
@@ -150,7 +151,7 @@ class MiLightHubPlatform {
           // already exists
           found = true;
 
-          if(found && platform.characteristicDetails !== milight.characteristics[HAPModelCharacteristic].value){
+          if(found && platform.characteristicDetails !== milight.characteristics[HAPModelCharacteristic].value) {
             this.debugLog('Characteristics mismatch detected, Removing accessory!');
             characteristicsMatch = false;
           }
@@ -159,10 +160,10 @@ class MiLightHubPlatform {
       });
 
       if (!found || !characteristicsMatch) {
-        let removeMessage = 'Removing ' + milight.name + ' from Homekit because ';
+        let removeMessage = 'Removing ' + milight.name + ' from HomeKit because ';
 
         if(!found){
-          removeMessage += 'it could not be find in MiLight Hub';
+          removeMessage += 'it could not be found in MiLight Hub';
         } else {
           removeMessage += 'a characteristics mismatch was detected';
         }
@@ -187,7 +188,7 @@ class MiLightHubPlatform {
       });
 
       if (!found) {
-        this.log('Adding ' + lightInfo.name + ' to Homekit');
+        this.log('Adding ' + lightInfo.name + ' to HomeKit');
         const milight = new MiLight(platform, lightInfo);
         this.accessories.push(milight);
 
@@ -195,7 +196,6 @@ class MiLightHubPlatform {
       }
     });
   }
-
 
   sendCommand (deviceId, remoteType, groupId, command) {
     if (this.mqttClient) {
@@ -215,7 +215,7 @@ class MiLightHubPlatform {
     }
   }
 
-  async apiCall (path, json = null, func) {
+  async apiCall (path, json = null) {
     // MiLight Hub lets you know all properties of the device on one HTTP request.
     // Unfortunately HomeKit queries each characteristic separately, so we've build a dedup function
     // It looks if the current job is already in Promise state 'PENDING' (running)
@@ -282,8 +282,8 @@ class MiLightHubPlatform {
     }
   }
 
-  //RGBtoHSV by Garry Tan from https://axonflux.com/handy-rgb-to-hsl-and-rgb-to-hsv-color-model-c with some modifications
-  RGBtoHS(r, g, b) {
+  // by Garry Tan from https://axonflux.com/handy-rgb-to-hsl-and-rgb-to-hsv-color-model-c with some modifications
+  RGBtoHueSaturation(r, g, b) {
     const max = Math.max(r, g, b),
         min = Math.min(r, g, b),
         a = max - min;
@@ -307,8 +307,6 @@ class MiLightHubPlatform {
       s: Math.round(100 * (0 === max ? 0 : a / max))
     };
   }
-
-
 }
 
 class MiLight {
@@ -332,6 +330,7 @@ class MiLight {
     this.applyCallbacks(this.accessory);
     this.currentState = { state: false, level: 100, saturation: 0, hue: 0, color_temp: 0 };
     this.designatedState = {};
+
     this.characteristics = {};
 
     for (let services of this.accessory.services) {
@@ -362,19 +361,17 @@ class MiLight {
     const lightbulbService = new Service.Lightbulb(this.name);
     lightbulbService.addCharacteristic(new Characteristic.Brightness());
 
-    if (this.platform.rgbRemotes.indexOf(this.remote_type) === -1) {
+    if (this.platform.rgbRemotes.includes(this.remote_type) || this.platform.rgbcctRemotes.includes(this.remote_type)) {
       lightbulbService.addCharacteristic(new Characteristic.Saturation());
       lightbulbService.addCharacteristic(new Characteristic.Hue());
     }
 
-    if (this.platform.rgbcctMode && this.platform.rgbcctRemotes.indexOf(this.remote_type) > -1) {
+    if (this.platform.whiteRemotes.includes(this.remote_type) || (this.platform.rgbcctMode && this.platform.rgbcctRemotes.includes(this.remote_type))) {
       lightbulbService
           .addCharacteristic(new Characteristic.ColorTemperature())
-          // maxValue 370 = 2700K (1000000/2700)
-          // minValue 153 = 6500K (1000000/6500)
           .setProps({
-            maxValue: 370,
-            minValue: 153
+            maxValue: 370, // maxValue 370 = 2700K (1000000/2700)
+            minValue: 153  // minValue 153 = 6500K (1000000/6500)
           });
     }
     accessory.addService(lightbulbService);
