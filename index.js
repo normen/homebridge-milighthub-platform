@@ -139,7 +139,7 @@ class MiLightHubPlatform {
     const platform = this;
     const HAPModelCharacteristic = '00000021-0000-1000-8000-0026BB765291'; // = 'Model' - Use the model characteristic to determine if backchannel & ColorTemperature is set as a characteristic
 
-    // Remove light from HomeKit
+    // Remove light from HomeKit if it does not exist in MiLight Hub; Otherwise add to MQTT subscription if necessary
     this.accessories.forEach((milight, idx) => {
       var found = false;
       var characteristicsMatch = true;
@@ -155,7 +155,6 @@ class MiLightHubPlatform {
             this.debugLog('Characteristics mismatch detected, Removing accessory!');
             characteristicsMatch = false;
           }
-
         }
       });
 
@@ -282,29 +281,63 @@ class MiLightHubPlatform {
     }
   }
 
-  // by Garry Tan from https://axonflux.com/handy-rgb-to-hsl-and-rgb-to-hsv-color-model-c with some modifications
   RGBtoHueSaturation(r, g, b) {
-    const max = Math.max(r, g, b),
-        min = Math.min(r, g, b),
-        a = max - min;
+    if(r === 255 && g === 255 && b === 255){
+      return {
+        h: 0,
+        s: 0
+      }
+    }
+    var d, h, max, min;
+    r /= 255;
+    g /= 255;
+    b /= 255;
+    max = Math.max(r, g, b);
+    min = Math.min(r, g, b);
 
-    switch(max) {
-      case min:
-        var h = 0;
-        break;
+    d = max - min;
+    switch (max) {
       case r:
-        h = (g - b + a * (g < b ? 6 : 0)) / (6 * a);
+        h = (g - b) / d + (g < b ? 6 : 0);
         break;
       case g:
-        h = (b - r + 2 * a) / (6 * a);
+        h = (b - r) / d + 2;
         break;
       case b:
-        h = (r - g + 4 * a) / (6 * a);
+        h = (r - g) / d + 4;
     }
+    h /= 6;
 
     return {
-      h: Math.round(100 * h),
-      s: Math.round(100 * (0 === max ? 0 : a / max))
+      h: Math.round(h * 360),
+      s: Math.round(100 * (0 === max ? 0 : d / max))
+    }
+  }
+
+  HomeKitColorTemperatureToHueSaturation(ColorTemperature) {
+    const dKelvin = 10000 / ColorTemperature;
+    const rgb = [
+      dKelvin > 66 ? 351.97690566805693 + 0.114206453784165 * (dKelvin - 55) - 40.25366309332127 * Math.log(dKelvin - 55) : 255,
+      dKelvin > 66 ? 325.4494125711974 + 0.07943456536662342 * (dKelvin - 50) - 28.0852963507957 * Math.log(dKelvin - 55) : 104.49216199393888 * Math.log(dKelvin - 2) - 0.44596950469579133 * (dKelvin - 2) - 155.25485562709179,
+      dKelvin > 66 ? 255 : 115.67994401066147 * Math.log(dKelvin - 10) + 0.8274096064007395 * (dKelvin - 10) - 254.76935184120902
+    ].map(v => Math.max(0, Math.min(255, v)) / 255);
+    const max = Math.max(...rgb);
+    const min = Math.min(...rgb);
+    let d = max - min,
+        h = 0,
+        s = max ? 100 * d / max : 0;
+
+    if (d) {
+      switch (max) {
+        case rgb[0]: h = (rgb[1] - rgb[2]) / d + (rgb[1] < rgb[2] ? 6 : 0); break;
+        case rgb[1]: h = (rgb[2] - rgb[0]) / d + 2; break;
+        default: h = (rgb[0] - rgb[1]) / d + 4; break;
+      }
+      h *= 60;
+    }
+    return {
+      h: Math.round(h),
+      s: Math.round(s)
     };
   }
 }
@@ -439,12 +472,26 @@ class MiLight {
       }
       lightbulbService.getCharacteristic(Characteristic.ColorTemperature)
           .on('set', this.setColorTemperature.bind(this));
-
     }
-
   }
 
-  stateChange () {
+  async getState () {
+    if (!this.platform.mqttClient) {
+      var path = '/gateways/' + '0x' + this.device_id.toString(16) + '/' + this.remote_type + '/' + this.group_id;
+
+      var returnValue = JSON.parse(await this.platform.apiCall(path));
+
+      this.currentState.state = returnValue.state === 'ON' || returnValue.bulb_mode === 'night';
+      this.currentState.level = returnValue.bulb_mode === 'night' ? 1 : Math.round(returnValue.brightness / 2.55);
+
+      this.currentState.hue = returnValue.bulb_mode === 'color' ? this.platform.RGBtoHueSaturation(returnValue.color.r, returnValue.color.g, returnValue.color.b).h : this.platform.HomeKitColorTemperatureToHueSaturation(returnValue.color_temp).h;
+      this.currentState.saturation = returnValue.bulb_mode === 'color' ? this.platform.RGBtoHueSaturation(returnValue.color.r, returnValue.color.g, returnValue.color.b).s : this.platform.HomeKitColorTemperatureToHueSaturation(returnValue.color_temp).s;
+
+      this.currentState.color_temp = returnValue.bulb_mode === 'color' ? null : returnValue.color_temp;
+    }
+  }
+
+  changeState () {
     if (this.myTimeout) {
       clearTimeout(this.myTimeout);
     }
@@ -532,18 +579,10 @@ class MiLight {
 
   /** MiLight shiz */
   async getPowerState (callback) {
-    if (this.platform.mqttClient) {
-      // TODO: implement getPowerState via MQTT
-      //not implemented yet so return null
-      callback(null, null);
-    } else {
-      var path = '/gateways/' + '0x' + this.device_id.toString(16) + '/' + this.remote_type + '/' + this.group_id;
+    this.platform.debugLog(['[getPowerState] GET Request']);
 
-      this.platform.debugLog(['[getPowerState] GET Request']);
-      var returnValue = JSON.parse(await this.platform.apiCall(path));
-
-      callback(null, returnValue.state === 'ON' || returnValue.bulb_mode === 'night');
-    }
+    await this.getState();
+    callback(null, this.currentState.state)
   }
 
   setPowerState (powerOn, callback) {
@@ -551,31 +590,15 @@ class MiLight {
 
     this.platform.debugLog(['[setPowerState] ' + powerOn]);
 
-    this.stateChange();
+    this.changeState();
     callback(null);
   }
 
   async getBrightness (callback) {
-    var brightness;
+    this.platform.debugLog(['[getBrightness] GET Request']);
 
-    if (this.platform.mqttClient) {
-      // TODO: implement getBrightness via MQTT
-      // not implemented yet so return null
-      callback(null, null);
-    } else {
-      var path = '/gateways/' + '0x' + this.device_id.toString(16) + '/' + this.remote_type + '/' + this.group_id;
-
-      this.platform.debugLog(['[getBrightness] GET Request']);
-      var returnValue = JSON.parse(await this.platform.apiCall(path));
-
-      if(returnValue.bulb_mode === 'night'){
-        brightness = 1; //set brightness to 1 if night_mode is enabled
-      } else {
-        brightness = Math.round(returnValue.brightness/2.55); //rounding should not be necessary but implemented it to be safe
-      }
-
-      callback(null, brightness);
-    }
+    await this.getState();
+    callback(null, this.currentState.level);
   }
 
   setBrightness (level, callback) {
@@ -583,28 +606,15 @@ class MiLight {
 
     this.platform.debugLog(['[setBrightness] ' + level]);
 
-    this.stateChange();
+    this.changeState();
     callback(null);
   }
 
   async getHue (callback) {
-    if (this.platform.mqttClient) {
-      // TODO: implement getHue via MQTT
-      //not implemented yet so return null
-      callback(null, null);
-    } else {
-      var path = '/gateways/' + '0x' + this.device_id.toString(16) + '/' + this.remote_type + '/' + this.group_id;
+    this.platform.debugLog(['[getHue] GET Request']);
 
-      this.platform.debugLog(['[getHue] GET Request']);
-      var returnValue = JSON.parse(await this.platform.apiCall(path));
-
-      if(returnValue.bulb_mode === "color"){
-        var calculatedHS = this.platform.RGBtoHS(returnValue.color.r, returnValue.color.g, returnValue.color.b);
-        callback(null, calculatedHS.h);
-      } else {
-        callback(null, null);
-      }
-    }
+    await this.getState();
+    callback(null, this.currentState.hue);
   }
 
   setHue (value, callback) {
@@ -612,28 +622,15 @@ class MiLight {
 
     this.platform.debugLog(['[setHue] ' + value]);
 
-    this.stateChange();
+    this.changeState();
     callback(null);
   }
 
   async getSaturation (callback) {
-    if (this.platform.mqttClient) {
-      // TODO: implement getSaturation via MQTT
-      //not implemented yet so return null
-      callback(null, null);
-    } else {
-      var path = '/gateways/' + '0x' + this.device_id.toString(16) + '/' + this.remote_type + '/' + this.group_id;
+    this.platform.debugLog(['[getSaturation] GET Request']);
 
-      this.platform.debugLog(['[getSaturation] GET Request']);
-      var returnValue = JSON.parse(await this.platform.apiCall(path));
-
-      if(returnValue.bulb_mode === "color"){
-        var calculatedHS = this.platform.RGBtoHS(returnValue.color.r, returnValue.color.g, returnValue.color.b);
-        callback(null, calculatedHS.s);
-      } else {
-        callback(null, null);
-      }
-    }
+    await this.getState();
+    callback(null, this.currentState.saturation);
   }
 
   setSaturation (value, callback) {
@@ -641,28 +638,15 @@ class MiLight {
 
     this.platform.debugLog(['[setSaturation] ' + value]);
 
-    this.stateChange();
+    this.changeState();
     callback(null);
   }
 
   async getColorTemperature (callback) {
-    if (this.platform.mqttClient) {
-      // TODO: implement getBrightness via MQTT
-      // not implemented yet so return null
-      callback(null, null);
-    } else {
-      var path = '/gateways/' + '0x' + this.device_id.toString(16) + '/' + this.remote_type + '/' + this.group_id;
+    this.platform.debugLog(['[getColorTemperature] GET Request']);
 
-      this.platform.debugLog(['[getColorTemperature] GET Request']);
-      var returnValue = JSON.parse(await this.platform.apiCall(path));
-
-      if(returnValue.bulb_mode === "color"){
-        callback(null, null);
-      } else {
-        var colorTemperature = Math.round(100000 / returnValue.color_temp); //rounding should not be necessary but implemented it to be safe
-        callback(null, colorTemperature);
-      }
-    }
+    await this.getState();
+    callback(null, this.currentState.color_temp)
   }
 
   setColorTemperature (value, callback) {
@@ -670,7 +654,7 @@ class MiLight {
 
     this.platform.debugLog(['[setColorTemperature] ' + value]);
 
-    this.stateChange();
+    this.changeState();
     callback(null);
   }
 }
