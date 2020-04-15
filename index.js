@@ -6,7 +6,6 @@ var mqtt = require('mqtt');
 
 var Accessory, Service, Characteristic, UUIDGen;
 
-
 module.exports = function (homebridge) {
   Accessory = homebridge.platformAccessory;
   Service = homebridge.hap.Service;
@@ -209,7 +208,7 @@ class MiLightHubPlatform {
 
   sendCommand (deviceId, remoteType, groupId, command) {
     if (this.mqttClient) {
-      var path = this.mqttTopicPattern.replace(':device_id', deviceId).replace(':device_type', remoteType).replace(':group_id', groupId);
+      var path = this.mqttTopicPattern.replace(':hex_device_id', '0x' + deviceId.toString(16).toUpperCase()).replace(':dec_device_id', deviceId).replace(':device_id', deviceId).replace(':device_type', remoteType).replace(':group_id', groupId);
       const sendBody = JSON.stringify(command);
       try {
         this.mqttClient.publish(path, sendBody);
@@ -315,7 +314,7 @@ class MiLightHubPlatform {
     if(platform.backchannel && platform.mqttClient._events.message === undefined){
       platform.mqttClient.on('message',function(topic, message, packet){ // create a listener if no one was created yet
         platform.accessories.forEach(function(milight){
-          var mqttCurrentLightPath = platform.mqttStateTopicPattern.replace(':hex_device_id', '0x' + milight.device_id.toString(16).toUpperCase()).replace(':device_type', milight.remote_type).replace(':group_id', milight.group_id);
+          var mqttCurrentLightPath = platform.mqttStateTopicPattern.replace(':hex_device_id', '0x' + milight.device_id.toString(16).toUpperCase()).replace(':dec_device_id', milight.device_id).replace(':device_id', milight.device_id).replace(':device_type', milight.remote_type).replace(':group_id', milight.group_id);
 
           if(topic.includes(mqttCurrentLightPath)){
             var returnValue = JSON.parse(message);
@@ -335,7 +334,7 @@ class MiLightHubPlatform {
   }
 
   subscribeMQTT(milight) {
-    var mqttPath = this.mqttStateTopicPattern.replace(':hex_device_id', '0x' + milight.device_id.toString(16).toUpperCase()).replace(':device_type', milight.remote_type).replace(':group_id', milight.group_id);
+    var mqttPath = this.mqttStateTopicPattern.replace(':hex_device_id', '0x' + milight.device_id.toString(16).toUpperCase()).replace(':dec_device_id', milight.device_id).replace(':device_id', milight.device_id).replace(':device_type', milight.remote_type).replace(':group_id', milight.group_id);
 
     if(!Object.keys(this.mqttClient['_resubscribeTopics']).includes(mqttPath)){
       this.mqttClient.subscribe(mqttPath);
@@ -343,7 +342,7 @@ class MiLightHubPlatform {
   }
 
   unsubscribeMQTT(milight) {
-    var mqttPath = this.mqttStateTopicPattern.replace(':hex_device_id', '0x' + milight.device_id.toString(16).toUpperCase()).replace(':device_type', milight.remote_type).replace(':group_id', milight.group_id);
+    var mqttPath = this.mqttStateTopicPattern.replace(':hex_device_id', '0x' + milight.device_id.toString(16).toUpperCase()).replace(':dec_device_id', milight.device_id).replace(':device_id', milight.device_id).replace(':device_type', milight.remote_type).replace(':group_id', milight.group_id);
 
     if(Object.keys(this.mqttClient['_resubscribeTopics']).includes(mqttPath)){
       this.mqttClient.unsubscribe(mqttPath);
