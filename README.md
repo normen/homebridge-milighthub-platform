@@ -1,8 +1,6 @@
 # homebridge-milighthub-platform [![NPM Version](https://img.shields.io/npm/v/homebridge-milighthub-platform.svg)](https://www.npmjs.com/package/homebridge-milighthub-platform)
 Homebridge plugin to control MiLight / EULight lamps through the Open Source [MiLight Hub](https://github.com/sidoh/esp8266_milight_hub).
 
-This plugin is a WIP, check below for the current limitations.
-
 ## Features
 - Automatically fetches all MiLight Hub aliases as lights
   - Add/Remove lamps through the MiLight Hub web interface
@@ -51,4 +49,4 @@ If MQTT is configured in the MiLight Hub then the plugin will automatically read
 
 ## Limitation
 #### RGB+CCT / RGBW(W) lamps
-RGB+CCT / RGBW(W) milights have two modes, color tempurature or RGB. Unfurtunately HomeKit does not support lights with both modes, so it's not supported to expose both RGB and Kelvin properties to Homekit. The default mode exposes only an RGB property, but detects when you set a color that is close to the colors used in the tempurature circle in HomeKit and uses the color tempurature mode on the milights in this case. This way you can still make use of favourite light-settings in the Home app. If you want to expose both properties anyway you can enable the RGB+CCT mode.
+RGB+CCT / RGBW(W) milights have two modes, color tempurature and RGB. Unfurtunately HomeKit does not support lights with both modes active at the same time, so it's not supported to expose both RGB and Kelvin properties to Homekit. The default mode exposes only an RGB property, but detects when you set a color that is close to the colors used in the tempurature circle in HomeKit and uses the color tempurature mode on the milights in this case. This way you can still make use of favourite light-settings in the Home app. If you want to expose both properties anyway you can enable the RGB+CCT mode.
