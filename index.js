@@ -91,7 +91,7 @@ class MiLightHubPlatform {
         if (i === 0) {
           this.log(debugLogDelimiter, message[i]);
         } else {
-          console.log(message[i])
+          this.log(message[i])
         }
       }
     } else {
@@ -280,9 +280,9 @@ class MiLightHubPlatform {
         });
         req.on('error', e => {
           if(json === null){
-            console.log('Error sending to MiLight ESP hub', url, json, e);
+            this.log('Error sending to MiLight ESP hub', url, json, e);
           } else {
-            console.log('Error sending to MiLight ESP hub', url, e);
+            this.log('Error sending to MiLight ESP hub', url, e);
           }
           resolve(false);
           this.cachedPromises[path] = 'new run';
