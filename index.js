@@ -318,7 +318,7 @@ class MiLightHubPlatform {
 
           if(topic.includes(mqttCurrentLightPath)){
             var returnValue = JSON.parse(message);
-            platform.debugLog('Incoming MQTT message: ' + returnValue);
+            platform.debugLog(['Incoming MQTT message from ' + topic + ': ', returnValue]);
 
             milight.currentState.state = returnValue.state === 'ON' || returnValue.bulb_mode === 'night';
             milight.currentState.level = returnValue.bulb_mode === 'night' ? 1 : Math.round(returnValue.brightness / 2.55);
