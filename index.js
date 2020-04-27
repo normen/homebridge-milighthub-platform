@@ -41,9 +41,11 @@ class MiLightHubPlatform {
     this.rgbRemotes = ['rgbw', 'rgb', 'fut020'];  // only RGB remotes
     this.rgbcctRemotes = ['fut089', 'rgb_cct'];   // RGB + Cold white + Warm white remotes
 
-    this.cachedPromises = [];
-
     this.host = config.host || 'milight-hub.local';
+    this.syncHubInterval = config.syncHubInterval || 10;
+    this.commandDelay = config.commandDelay || 100;
+
+    this.cachedPromises = [];
     this.accessories = [];
 
     if (api) {
@@ -132,10 +134,8 @@ class MiLightHubPlatform {
         }
 
         platform.syncLightLists(lightList);
-      } else {
-
       }
-      setTimeout(platform.getServerLightList.bind(platform), 10000);
+      setTimeout(platform.getServerLightList.bind(platform), platform.syncHubInterval*1000);
     });
   }
 
@@ -565,7 +565,7 @@ class MiLight {
     if (this.myTimeout) {
       clearTimeout(this.myTimeout);
     }
-    this.myTimeout = setTimeout(this.applyDesignatedState.bind(this), 100);
+    this.myTimeout = setTimeout(this.applyDesignatedState.bind(this), this.platform.commandDelay);
   }
 
   testWhiteMode(hue, saturation){ // Copyright goes to https://gitlab.com/jespertheend/homebridge-milight-esp/-/blob/master/index.js
