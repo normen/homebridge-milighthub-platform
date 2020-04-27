@@ -47,10 +47,24 @@
       "required": false
     },
     "forceHTTP": {
-      "title": "Force HTTP instaed of MQTT",
+      "title": "Force HTTP instead of MQTT",
       "type": "boolean",
       "default": false,
       "description": "Force use of HTTP regardless of MQTT settings in your MiLight hub",
+      "required": false
+    },
+    "syncHubInterval": {
+      "title": "Hub synchronization interval",
+      "type": "integer",
+      "default": 10,
+      "description": "Defines the interval in seconds when the plugin synchronizes with the hub",
+      "required": false
+    },
+    "commandDelay": {
+      "title": "Delay between sending commands",
+      "type": "integer",
+      "default": 100,
+      "description": "Defines the delay to send the commands with in milliseconds",
       "required": false
     },
     "debug": {

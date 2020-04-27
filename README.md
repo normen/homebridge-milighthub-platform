@@ -38,6 +38,8 @@ Homebridge plugin to control MiLight / EULight lamps through the Open Source [Mi
  - `httpUsername` If you are using a username:password authentication for your MiLight Hub type in here your credentials, default `null` (disabled)
  - `httpPassword` If you are using a username:password authentication for your MiLight Hub type in here your credentials, default `null` (disabled)
  - `forceHTTP` Force use of HTTP regardless of MQTT settings in your MiLight hub, default `false` (disabled)
+ - `syncHubInterval` Defines the interval in seconds when the plugin synchronizes with the hub, default every `10` seconds
+ - `commandDelay` Defines the delay to send the commands with in milliseconds, default `100` milliseconds
  - `debug` Enables/Disables debug mode, default `false` (disabled)
 
 ## Usage

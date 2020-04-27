@@ -41,9 +41,11 @@ class MiLightHubPlatform {
     this.rgbRemotes = ['rgbw', 'rgb', 'fut020'];  // only RGB remotes
     this.rgbcctRemotes = ['fut089', 'rgb_cct'];   // RGB + Cold white + Warm white remotes
 
-    this.cachedPromises = [];
-
     this.host = config.host || 'milight-hub.local';
+    this.syncHubInterval = config.syncHubInterval || 10;
+    this.commandDelay = config.commandDelay || 100;
+
+    this.cachedPromises = [];
     this.accessories = [];
 
     if (api) {
@@ -132,10 +134,8 @@ class MiLightHubPlatform {
         }
 
         platform.syncLightLists(lightList);
-      } else {
-
       }
-      setTimeout(platform.getServerLightList.bind(platform), 10000);
+      setTimeout(platform.getServerLightList.bind(platform), platform.syncHubInterval*1000);
     });
   }
 
@@ -316,9 +316,11 @@ class MiLightHubPlatform {
         platform.accessories.forEach(function(milight){
           var mqttCurrentLightPath = platform.mqttStateTopicPattern.replace(':hex_device_id', '0x' + milight.device_id.toString(16).toUpperCase()).replace(':dec_device_id', milight.device_id).replace(':device_id', milight.device_id).replace(':device_type', milight.remote_type).replace(':group_id', milight.group_id);
 
-          if(topic.includes(mqttCurrentLightPath)){
+          if(topic.includes(mqttCurrentLightPath) && Buffer.compare(milight.currentState.lastMQTTMessage,message) !== 0){
+            milight.currentState.lastMQTTMessage = message
+
             var returnValue = JSON.parse(message);
-            platform.debugLog('Incoming MQTT message: ' + returnValue);
+            platform.debugLog(['Parsing MQTT message from ' + topic + ': ', returnValue]);
 
             milight.currentState.state = returnValue.state === 'ON' || returnValue.bulb_mode === 'night';
             milight.currentState.level = returnValue.bulb_mode === 'night' ? 1 : Math.round(returnValue.brightness / 2.55);
@@ -429,7 +431,7 @@ class MiLight {
     this.group_id = this.accessory.context.light_info.group_id;
     this.remote_type = this.accessory.context.light_info.remote_type;
     this.applyCallbacks(this.accessory);
-    this.currentState = { state: false, level: 100, saturation: 0, hue: 0, color_temp: 0 };
+    this.currentState = { state: false, level: 100, saturation: 0, hue: 0, color_temp: 0, lastMQTTMessage: Buffer.from('') };
     this.designatedState = {};
 
     this.characteristics = {};
@@ -563,7 +565,7 @@ class MiLight {
     if (this.myTimeout) {
       clearTimeout(this.myTimeout);
     }
-    this.myTimeout = setTimeout(this.applyDesignatedState.bind(this), 100);
+    this.myTimeout = setTimeout(this.applyDesignatedState.bind(this), this.platform.commandDelay);
   }
 
   testWhiteMode(hue, saturation){ // Copyright goes to https://gitlab.com/jespertheend/homebridge-milight-esp/-/blob/master/index.js
