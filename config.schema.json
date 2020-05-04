@@ -5,7 +5,7 @@
   "footerDisplay": "For documentation please see http://github.com/normen/homebridge-milighthub-platform",
   "schema": {
     "name": {
-      "title": "Name",
+      "title": "Log Name",
       "type": "string",
       "default": "MiLightHubPlatform",
       "description": "The name of the platform as it appears in the homebridge log",
@@ -74,5 +74,25 @@
       "description": "Enables debug mode",
       "required": false
     }
-  }
+  },
+  "form": [
+    "host",
+    {
+      "type": "section",
+      "expandable": true,
+      "expanded": false,
+      "title": "Advanced",
+      "items": [
+        "httpUsername",
+        "httpPassword",
+        "backchannel",
+        "rgbcctMode",
+        "forceHTTP",
+        "syncHubInterval",
+        "commandDelay",
+        "name",
+        "debug"
+      ]
+    }
+  ]
 }
