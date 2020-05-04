@@ -37,17 +37,17 @@ class MiLightHubPlatform {
     // controlling them in RGB+CCT mode lets the color saving / favorite function to malfunction
     this.rgbcctMode = config.rgbcctMode === null ? false : this.rgbcctMode = config.rgbcctMode !== false;
     this.characteristicDetails = '0x' + (this.backchannel ? 1 : 0).toString() + ',0x' + (this.rgbcctMode ? 1 : 0).toString();
-    this.whiteRemotes = ['cct', 'fut091'];        // only Cold white + Warm white remotes
-    this.rgbRemotes = ['rgbw', 'rgb', 'fut020'];  // only RGB remotes
-    this.rgbcctRemotes = ['fut089', 'rgb_cct'];   // RGB + Cold white + Warm white remotes
+    this.whiteRemotes = ['cct', 'fut091']; // only Cold white + Warm white remotes
+    this.rgbRemotes = ['rgbw', 'rgb', 'fut020']; // only RGB remotes
+    this.rgbcctRemotes = ['fut089', 'rgb_cct']; // RGB + Cold white + Warm white remotes
     this.cachedPromises = [];
     this.accessories = [];
     this.api.on('didFinishLaunching', function () {
       platform.debugLog('DidFinishLaunching');
       platform.getServerLightList();
     });
-    if(this.httpUsername && this.httpPassword) {
-      this.debugLog('Using Basic Authorization!')
+    if (this.httpUsername && this.httpPassword) {
+      this.debugLog('Using Basic Authorization!');
     }
   }
 
@@ -77,7 +77,7 @@ class MiLightHubPlatform {
         if (i === 0) {
           this.log(debugLogDelimiter, message[i]);
         } else {
-          this.log(message[i])
+          this.log(message[i]);
         }
       }
     } else {
@@ -112,12 +112,12 @@ class MiLightHubPlatform {
         }
         for (var name in settings.group_id_aliases) {
           var values = settings.group_id_aliases[name];
-          var lightInfo = { name: name, device_id: values[1], group_id: values[2], remote_type: values[0], uid: '0x' + values[1].toString(16).toUpperCase() + '/' + values[0] + '/' + values[2]};
+          var lightInfo = { name: name, device_id: values[1], group_id: values[2], remote_type: values[0], uid: '0x' + values[1].toString(16).toUpperCase() + '/' + values[0] + '/' + values[2] };
           lightList.push(lightInfo);
         }
         platform.syncLightLists(lightList);
       }
-      setTimeout(platform.getServerLightList.bind(platform), platform.syncHubInterval*1000);
+      setTimeout(platform.getServerLightList.bind(platform), platform.syncHubInterval * 1000);
     });
   }
 
@@ -128,29 +128,29 @@ class MiLightHubPlatform {
     this.accessories.forEach((milight, idx) => {
       var found = false;
       var characteristicsMatch = true;
-      if (lightList.find(lightInfo=>(
-          milight.group_id === lightInfo.group_id &&
+      if (lightList.find(lightInfo => (
+        milight.group_id === lightInfo.group_id &&
           milight.device_id === lightInfo.device_id &&
           milight.remote_type === lightInfo.remote_type &&
           milight.name === lightInfo.name)) !== undefined) {
         found = true;
-        if(platform.characteristicDetails !== milight.characteristics[HAPModelCharacteristic].value) {
+        if (platform.characteristicDetails !== milight.characteristics[HAPModelCharacteristic].value) {
           this.debugLog('Characteristics mismatch detected, Removing accessory!');
           characteristicsMatch = false;
-        } else if(this.backchannel && platform.mqttClient){
+        } else if (this.backchannel && platform.mqttClient) {
           this.subscribeMQTT(milight); // doesn't re-subscribe if exists
         }
       }
       if (!found || !characteristicsMatch) {
         let removeMessage = 'Removing ' + milight.name + ' from HomeKit because ';
-        if(!found){
+        if (!found) {
           removeMessage += 'it could not be found in MiLight Hub';
         } else {
           removeMessage += 'a characteristics mismatch was detected';
         }
         this.log(removeMessage);
         this.accessories.splice(idx, 1);
-        if(platform.mqttClient){
+        if (platform.mqttClient) {
           this.unsubscribeMQTT(milight);
         }
         this.api.unregisterPlatformAccessories('homebridge-milighthub-platform', 'MiLightHubPlatform', [milight.accessory]);
@@ -158,8 +158,8 @@ class MiLightHubPlatform {
     });
     // Add new lights to HomeKit
     lightList.forEach(lightInfo => {
-      if (this.accessories.find(milight=>(
-          milight.group_id === lightInfo.group_id &&
+      if (this.accessories.find(milight => (
+        milight.group_id === lightInfo.group_id &&
           milight.device_id === lightInfo.device_id &&
           milight.remote_type === lightInfo.remote_type &&
           milight.name === lightInfo.name)) === undefined) {
@@ -195,32 +195,32 @@ class MiLightHubPlatform {
     // It looks if the current job is already in Promise state 'PENDING' (running)
     // If yes return the same promise from cache --> don't start a new one(!)
     // If no start a promise, cache it and return this
-    if (this.cachedPromises[path] === 'PENDING'){
+    if (this.cachedPromises[path] === 'PENDING') {
       this.debugLog('GET (dedup): ' + path);
       return await this.cachedPromises[path + '_promise'];
     } else {
       this.debugLog('GET: ' + path);
-      if(path !== '/settings' && json === null){
+      if (path !== '/settings' && json === null) {
         this.cachedPromises[path] = 'PENDING';
       }
       this.cachedPromises[path + '_promise'] = new Promise(resolve => {
         const url = 'http://' + this.host + path;
         var http_header;
-        if(json === null){
-          http_header ={
+        if (json === null) {
+          http_header = {
             method: 'GET',
             headers: {}
           };
         } else {
           var sendBody = JSON.stringify(json);
-          http_header ={
+          http_header = {
             method: 'PUT',
             headers: {
               'Content-Length': sendBody.length
             }
           };
         }
-        if(this.httpUsername && this.httpPassword){
+        if (this.httpUsername && this.httpPassword) {
           var base64AuthorizationHeader = new Buffer(this.httpUsername + ':' + this.httpPassword).toString('base64');
           http_header.headers.Authorization = 'Basic ' + base64AuthorizationHeader;
         }
@@ -240,7 +240,7 @@ class MiLightHubPlatform {
           });
         });
         req.on('error', e => {
-          if(json === null){
+          if (json === null) {
             this.log('Error sending to MiLight ESP hub', url, json, e);
           } else {
             this.log('Error sending to MiLight ESP hub', url, e);
@@ -248,31 +248,31 @@ class MiLightHubPlatform {
           resolve(false);
           this.cachedPromises[path] = 'new run';
         });
-        if(json !== null){
+        if (json !== null) {
           req.write(sendBody);
         }
         req.end();
       });
-      return this.cachedPromises[path + "_promise"];
+      return this.cachedPromises[path + '_promise'];
     }
   }
 
-  initializeMQTT(){
+  initializeMQTT () {
     var platform = this;
     var mqtt_options = {
-      clientId:"homebridge_milight_hub"
+      clientId: 'homebridge_milight_hub'
     };
-    if(platform.mqttUser !== "" && platform.mqttPass !== ""){
+    if (platform.mqttUser !== '' && platform.mqttPass !== '') {
       mqtt_options.username = platform.mqttUser;
       mqtt_options.password = platform.mqttPass;
     }
     platform.mqttClient = mqtt.connect('mqtt://' + platform.mqttServer, mqtt_options);
-    if(platform.backchannel && platform.mqttClient._events.message === undefined){
-      platform.mqttClient.on('message',function(topic, message, packet){ // create a listener if no one was created yet
-        platform.accessories.forEach(function(milight){
+    if (platform.backchannel && platform.mqttClient._events.message === undefined) {
+      platform.mqttClient.on('message', function (topic, message, packet) { // create a listener if no one was created yet
+        platform.accessories.forEach(function (milight) {
           var mqttCurrentLightPath = platform.mqttStateTopicPattern.replace(':hex_device_id', '0x' + milight.device_id.toString(16).toUpperCase()).replace(':dec_device_id', milight.device_id).replace(':device_id', milight.device_id).replace(':device_type', milight.remote_type).replace(':group_id', milight.group_id);
-          if(topic.includes(mqttCurrentLightPath) && Buffer.compare(milight.currentState.lastMQTTMessage,message) !== 0){
-            milight.currentState.lastMQTTMessage = message
+          if (topic.includes(mqttCurrentLightPath) && Buffer.compare(milight.currentState.lastMQTTMessage, message) !== 0) {
+            milight.currentState.lastMQTTMessage = message;
             var returnValue = JSON.parse(message);
             platform.debugLog(['Parsing MQTT message from ' + topic + ': ', returnValue]);
             milight.currentState.state = returnValue.state === 'ON' || returnValue.bulb_mode === 'night';
@@ -281,31 +281,31 @@ class MiLightHubPlatform {
             milight.currentState.saturation = returnValue.bulb_mode === 'color' ? (platform.RGBtoHueSaturation(returnValue.color.r, returnValue.color.g, returnValue.color.b)).s : (platform.HomeKitColorTemperatureToHueSaturation(returnValue.color_temp)).s;
             milight.currentState.color_temp = returnValue.bulb_mode === 'color' ? null : returnValue.color_temp;
           }
-        })
+        });
       });
     }
   }
 
-  subscribeMQTT(milight) {
+  subscribeMQTT (milight) {
     var mqttPath = this.mqttStateTopicPattern.replace(':hex_device_id', '0x' + milight.device_id.toString(16).toUpperCase()).replace(':dec_device_id', milight.device_id).replace(':device_id', milight.device_id).replace(':device_type', milight.remote_type).replace(':group_id', milight.group_id);
-    if(!Object.keys(this.mqttClient['_resubscribeTopics']).includes(mqttPath)){
+    if (!Object.keys(this.mqttClient._resubscribeTopics).includes(mqttPath)) {
       this.mqttClient.subscribe(mqttPath);
     }
   }
 
-  unsubscribeMQTT(milight) {
+  unsubscribeMQTT (milight) {
     var mqttPath = this.mqttStateTopicPattern.replace(':hex_device_id', '0x' + milight.device_id.toString(16).toUpperCase()).replace(':dec_device_id', milight.device_id).replace(':device_id', milight.device_id).replace(':device_type', milight.remote_type).replace(':group_id', milight.group_id);
-    if(Object.keys(this.mqttClient['_resubscribeTopics']).includes(mqttPath)){
+    if (Object.keys(this.mqttClient._resubscribeTopics).includes(mqttPath)) {
       this.mqttClient.unsubscribe(mqttPath);
     }
   }
 
-  RGBtoHueSaturation(r, g, b) {
-    if(r === 255 && g === 255 && b === 255){
+  RGBtoHueSaturation (r, g, b) {
+    if (r === 255 && g === 255 && b === 255) {
       return {
         h: 0,
         s: 0
-      }
+      };
     }
     var d, h, max, min;
     r /= 255;
@@ -327,11 +327,11 @@ class MiLightHubPlatform {
     h /= 6;
     return {
       h: Math.round(h * 360),
-      s: Math.round(100 * (0 === max ? 0 : d / max))
-    }
+      s: Math.round(100 * (max === 0 ? 0 : d / max))
+    };
   }
 
-  HomeKitColorTemperatureToHueSaturation(ColorTemperature) {
+  HomeKitColorTemperatureToHueSaturation (ColorTemperature) {
     const dKelvin = 10000 / ColorTemperature;
     const rgb = [
       dKelvin > 66 ? 351.97690566805693 + 0.114206453784165 * (dKelvin - 55) - 40.25366309332127 * Math.log(dKelvin - 55) : 255,
@@ -340,9 +340,9 @@ class MiLightHubPlatform {
     ].map(v => Math.max(0, Math.min(255, v)) / 255);
     const max = Math.max(...rgb);
     const min = Math.min(...rgb);
-    let d = max - min,
-        h = 0,
-        s = max ? 100 * d / max : 0;
+    const d = max - min;
+    let h = 0;
+    const s = max ? 100 * d / max : 0;
     if (d) {
       switch (max) {
         case rgb[0]: h = (rgb[1] - rgb[2]) / d + (rgb[1] < rgb[2] ? 6 : 0); break;
@@ -380,9 +380,9 @@ class MiLight {
     this.currentState = { state: false, level: 100, saturation: 0, hue: 0, color_temp: 0, lastMQTTMessage: Buffer.from('') };
     this.designatedState = {};
     this.characteristics = {};
-    for (let services of this.accessory.services) {
+    for (const services of this.accessory.services) {
       var service = JSON.parse(JSON.stringify(services));
-      for (let characteristic of service.characteristics){
+      for (const characteristic of service.characteristics) {
         this.characteristics[characteristic.UUID] = characteristic;
       }
     }
@@ -394,10 +394,10 @@ class MiLight {
     const informationService = accessory.getService(Service.AccessoryInformation);// new Service.AccessoryInformation();
     if (informationService) {
       informationService
-          .setCharacteristic(Characteristic.Manufacturer, 'MiLight')
-          .setCharacteristic(Characteristic.Model, this.platform.characteristicDetails)
-          .setCharacteristic(Characteristic.SerialNumber, accessory.context.light_info.uid)
-          .setCharacteristic(Characteristic.FirmwareRevision, packageJSON.version);
+        .setCharacteristic(Characteristic.Manufacturer, 'MiLight')
+        .setCharacteristic(Characteristic.Model, this.platform.characteristicDetails)
+        .setCharacteristic(Characteristic.SerialNumber, accessory.context.light_info.uid)
+        .setCharacteristic(Characteristic.FirmwareRevision, packageJSON.version);
     } else {
       this.log('Error: No information service found');
     }
@@ -409,11 +409,11 @@ class MiLight {
     }
     if (this.platform.whiteRemotes.includes(this.remote_type) || (this.platform.rgbcctMode && this.platform.rgbcctRemotes.includes(this.remote_type))) {
       lightbulbService
-          .addCharacteristic(new Characteristic.ColorTemperature())
-          .setProps({
-            maxValue: 370, // maxValue 370 = 2700K (1000000/2700)
-            minValue: 153  // minValue 153 = 6500K (1000000/6500)
-          });
+        .addCharacteristic(new Characteristic.ColorTemperature())
+        .setProps({
+          maxValue: 370, // maxValue 370 = 2700K (1000000/2700)
+          minValue: 153 // minValue 153 = 6500K (1000000/6500)
+        });
     }
     accessory.addService(lightbulbService);
   }
@@ -426,48 +426,48 @@ class MiLight {
     }
     if (lightbulbService.getCharacteristic(Characteristic.On)) {
       this.platform.debugLog('Characteristic.On is set');
-      if(this.platform.backchannel) {
+      if (this.platform.backchannel) {
         lightbulbService.getCharacteristic(Characteristic.On)
-            .on('get', this.getPowerState.bind(this));
+          .on('get', this.getPowerState.bind(this));
       }
       lightbulbService.getCharacteristic(Characteristic.On)
-          .on('set', this.setPowerState.bind(this));
+        .on('set', this.setPowerState.bind(this));
     }
     if (lightbulbService.getCharacteristic(Characteristic.Brightness)) {
       this.platform.debugLog('Characteristic.Brightness is set');
-      if(this.platform.backchannel) {
+      if (this.platform.backchannel) {
         lightbulbService.getCharacteristic(Characteristic.Brightness)
-            .on('get', this.getBrightness.bind(this));
+          .on('get', this.getBrightness.bind(this));
       }
       lightbulbService.getCharacteristic(Characteristic.Brightness)
-          .on('set', this.setBrightness.bind(this));
+        .on('set', this.setBrightness.bind(this));
     }
     if (lightbulbService.getCharacteristic(Characteristic.Hue)) {
       this.platform.debugLog('Characteristic.Hue is set');
-      if(this.platform.backchannel) {
+      if (this.platform.backchannel) {
         lightbulbService.getCharacteristic(Characteristic.Hue)
-            .on('get', this.getHue.bind(this));
+          .on('get', this.getHue.bind(this));
       }
       lightbulbService.getCharacteristic(Characteristic.Hue)
-          .on('set', this.setHue.bind(this));
+        .on('set', this.setHue.bind(this));
     }
     if (lightbulbService.getCharacteristic(Characteristic.Saturation)) {
       this.platform.debugLog('Characteristic.Saturation is set');
-      if(this.platform.backchannel) {
+      if (this.platform.backchannel) {
         lightbulbService.getCharacteristic(Characteristic.Saturation)
-            .on('get', this.getSaturation.bind(this));
+          .on('get', this.getSaturation.bind(this));
       }
       lightbulbService.getCharacteristic(Characteristic.Saturation)
-          .on('set', this.setSaturation.bind(this));
+        .on('set', this.setSaturation.bind(this));
     }
-    if(this.platform.rgbcctMode && (lightbulbService.getCharacteristic(Characteristic.ColorTemperature))) {
+    if (this.platform.rgbcctMode && (lightbulbService.getCharacteristic(Characteristic.ColorTemperature))) {
       this.platform.debugLog('Characteristic.ColorTemperature is set');
-      if(this.platform.backchannel) {
+      if (this.platform.backchannel) {
         lightbulbService.getCharacteristic(Characteristic.ColorTemperature)
-            .on('get', this.getColorTemperature.bind(this));
+          .on('get', this.getColorTemperature.bind(this));
       }
       lightbulbService.getCharacteristic(Characteristic.ColorTemperature)
-          .on('set', this.setColorTemperature.bind(this));
+        .on('set', this.setColorTemperature.bind(this));
     }
   }
 
@@ -490,14 +490,14 @@ class MiLight {
     this.myTimeout = setTimeout(this.applyDesignatedState.bind(this), this.platform.commandDelay);
   }
 
-  testWhiteMode(hue, saturation){ // Copyright goes to https://gitlab.com/jespertheend/homebridge-milight-esp/-/blob/master/index.js
-    if(hue < 150){
-      let fn1 = -70 / (hue - 30) + 2.5;
-      let fn2 = -70 / (hue - 33) + 1;
+  testWhiteMode (hue, saturation) { // Copyright goes to https://gitlab.com/jespertheend/homebridge-milight-esp/-/blob/master/index.js
+    if (hue < 150) {
+      const fn1 = -70 / (hue - 30) + 2.5;
+      const fn2 = -70 / (hue - 33) + 1;
       return (saturation < fn1 || hue >= 30) && (saturation > fn2 && hue < 33);
-    }else{
-      let fn3 = 70 / (hue - 219) + 2.7;
-      let fn4 = 90 / (hue - 216) + 0.8;
+    } else {
+      const fn3 = 70 / (hue - 219) + 2.7;
+      const fn4 = 90 / (hue - 216) + 0.8;
       return saturation < fn3 && saturation > fn4;
     }
   }
@@ -523,7 +523,7 @@ class MiLight {
     } else if (dstate.state !== undefined) {
       command.state = 'Off';
       cstate.state = dstate.state;
-      if(dstate.level !== undefined){
+      if (dstate.level !== undefined) {
         cstate.level = dstate.level;
       }
     }
@@ -543,16 +543,16 @@ class MiLight {
       command.hue = dstate.hue;
       cstate.hue = dstate.hue;
     }
-    if(!this.platform.rgbcctMode){
-      let useWhiteMode = this.testWhiteMode(dstate.hue, dstate.saturation);
-      if(useWhiteMode){
+    if (!this.platform.rgbcctMode) {
+      const useWhiteMode = this.testWhiteMode(dstate.hue, dstate.saturation);
+      if (useWhiteMode) {
         delete command.saturation;
         delete command.hue;
         let kelvin = 100;
-        if(dstate.hue > 150){
+        if (dstate.hue > 150) {
           kelvin = 0.5 - dstate.saturation / 40;
-        }else{
-          kelvin = Math.sqrt(dstate.saturation*0.0033) + 0.5;
+        } else {
+          kelvin = Math.sqrt(dstate.saturation * 0.0033) + 0.5;
           kelvin = Math.min(1, Math.max(0, kelvin));
         }
         kelvin *= 100;
@@ -572,7 +572,7 @@ class MiLight {
   async getPowerState (callback) {
     this.platform.debugLog(['[getPowerState] GET Request']);
     await this.getState();
-    callback(null, this.currentState.state)
+    callback(null, this.currentState.state);
   }
 
   setPowerState (powerOn, callback) {
@@ -624,7 +624,7 @@ class MiLight {
   async getColorTemperature (callback) {
     this.platform.debugLog(['[getColorTemperature] GET Request']);
     await this.getState();
-    callback(null, this.currentState.color_temp)
+    callback(null, this.currentState.color_temp);
   }
 
   setColorTemperature (value, callback) {
