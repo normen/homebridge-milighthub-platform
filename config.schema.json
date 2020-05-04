@@ -22,21 +22,21 @@
       "title": "Authorization: HTTP Username",
       "type": "string",
       "default": "",
-      "description": "If you are using a username:password authentication for your MiLight Hub type in here your credentials",
+      "description": "Only needed if you are using username:password authentication for your MiLight Hub",
       "required": false
     },
     "httpPassword": {
       "title": "Authorization: HTTP Password",
       "type": "string",
       "default": "",
-      "description": "If you are using a username:password authentication for your MiLight Hub type in here your credentials",
+      "description": "Only needed if you are using username:password authentication for your MiLight Hub",
       "required": false
     },
     "backchannel": {
       "title": "Backchannel enabled",
       "type": "boolean",
       "default": false,
-      "description": "If enabled HomeKit does update if MiLight hub is controlled otherwise, currently limited to http only",
+      "description": "If enabled HomeKit will update if MiLight hub is controlled otherwise",
       "required": false
     },
     "rgbcctMode": {
@@ -57,14 +57,14 @@
       "title": "Hub synchronization interval",
       "type": "integer",
       "default": 10,
-      "description": "Defines the interval in seconds when the plugin synchronizes with the hub",
+      "description": "Defines the interval in seconds for synchronizing light lists with the hub",
       "required": false
     },
     "commandDelay": {
-      "title": "Delay between sending commands",
+      "title": "Command delay",
       "type": "integer",
       "default": 100,
-      "description": "Defines the delay to send the commands with in milliseconds",
+      "description": "How long to wait for HomeKit to send all values for one light (milliseconds)",
       "required": false
     },
     "debug": {
