@@ -128,21 +128,19 @@ class MiLightHubPlatform {
     this.accessories.forEach((milight, idx) => {
       var found = false;
       var characteristicsMatch = true;
-      lightList.forEach(lightInfo => {
-        if (milight.group_id === lightInfo.group_id &&
-            milight.device_id === lightInfo.device_id &&
-            milight.remote_type === lightInfo.remote_type &&
-            milight.name === lightInfo.name) {
-          // already exists
-          found = true;
-          if(found && platform.characteristicDetails !== milight.characteristics[HAPModelCharacteristic].value) {
-            this.debugLog('Characteristics mismatch detected, Removing accessory!');
-            characteristicsMatch = false;
-          } else if(found && this.backchannel && platform.mqttClient){
-            this.subscribeMQTT(milight);
-          }
+      if (lightList.find(lightInfo=>(
+          milight.group_id === lightInfo.group_id &&
+          milight.device_id === lightInfo.device_id &&
+          milight.remote_type === lightInfo.remote_type &&
+          milight.name === lightInfo.name)) !== undefined) {
+        found = true;
+        if(platform.characteristicDetails !== milight.characteristics[HAPModelCharacteristic].value) {
+          this.debugLog('Characteristics mismatch detected, Removing accessory!');
+          characteristicsMatch = false;
+        } else if(this.backchannel && platform.mqttClient){
+          this.subscribeMQTT(milight); // doesn't re-subscribe if exists
         }
-      });
+      }
       if (!found || !characteristicsMatch) {
         let removeMessage = 'Removing ' + milight.name + ' from HomeKit because ';
         if(!found){
@@ -158,18 +156,13 @@ class MiLightHubPlatform {
         this.api.unregisterPlatformAccessories('homebridge-milighthub-platform', 'MiLightHubPlatform', [milight.accessory]);
       }
     });
-    // Add light to HomeKit
+    // Add new lights to HomeKit
     lightList.forEach(lightInfo => {
-      var found = false;
-      this.accessories.forEach(milight => {
-        if (milight.group_id === lightInfo.group_id &&
-            milight.device_id === lightInfo.device_id &&
-            milight.remote_type === lightInfo.remote_type &&
-            milight.name === lightInfo.name) {
-          found = true;
-        }
-      });
-      if (!found) {
+      if (this.accessories.find(milight=>(
+          milight.group_id === lightInfo.group_id &&
+          milight.device_id === lightInfo.device_id &&
+          milight.remote_type === lightInfo.remote_type &&
+          milight.name === lightInfo.name)) === undefined) {
         this.log('Adding ' + lightInfo.name + ' to HomeKit');
         const milight = new MiLight(platform, lightInfo);
         this.accessories.push(milight);
