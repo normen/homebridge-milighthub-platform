@@ -1,6 +1,5 @@
 'use strict';
 const packageJSON = require('./package.json');
-
 var http = require('http');
 var mqtt = require('mqtt');
 
@@ -18,8 +17,9 @@ module.exports = function (homebridge) {
 // api may be null if launched from old homebridge version
 class MiLightHubPlatform {
   constructor (log, config, api) {
-    if (!config) return;
+    if (!config || !api) return;
     var platform = this;
+    this.api = api;
     this.log = log;
     this.config = config;
     this.httpUsername = config.httpUsername || null;
@@ -27,40 +27,25 @@ class MiLightHubPlatform {
     this.backchannel = config.backchannel || false;
     this.forceHTTP = config.forceHTTP || false;
     this.debug = config.debug || false;
-
+    this.host = config.host || 'milight-hub.local';
+    this.syncHubInterval = config.syncHubInterval || 10;
+    this.commandDelay = config.commandDelay || 100;
     // according to https://github.com/apple/HomeKitADK/blob/master/HAP/HAPCharacteristicTypes.h this is a unsupported combination:
     // "This characteristic must not be used for lamps which support color."
     // but let the user choose because the RGB+CCT lamps do have seperate LEDs for the white temperatures and seperate for the RGB colors
     // controlling them in RGB mode lets seem the RGB screen to be buggy (orange colors will sometimes change to white_mode)
     // controlling them in RGB+CCT mode lets the color saving / favorite function to malfunction
     this.rgbcctMode = config.rgbcctMode === null ? false : this.rgbcctMode = config.rgbcctMode !== false;
-
     this.characteristicDetails = '0x' + (this.backchannel ? 1 : 0).toString() + ',0x' + (this.rgbcctMode ? 1 : 0).toString();
-
     this.whiteRemotes = ['cct', 'fut091'];        // only Cold white + Warm white remotes
     this.rgbRemotes = ['rgbw', 'rgb', 'fut020'];  // only RGB remotes
     this.rgbcctRemotes = ['fut089', 'rgb_cct'];   // RGB + Cold white + Warm white remotes
-
-    this.host = config.host || 'milight-hub.local';
-    this.syncHubInterval = config.syncHubInterval || 10;
-    this.commandDelay = config.commandDelay || 100;
-
     this.cachedPromises = [];
     this.accessories = [];
-
-    if (api) {
-      // Save the API object as plugin needs to register new accessory via this object
-      this.api = api;
-
-      // Listen to event "didFinishLaunching", this means homebridge already finished loading cached accessories.
-      // Platform Plugin should only register new accessory that doesn't exist in homebridge after this event.
-      // Or start discover new accessories.
-      this.api.on('didFinishLaunching', function () {
-        platform.debugLog('DidFinishLaunching');
-        platform.getServerLightList();
-      });
-    }
-
+    this.api.on('didFinishLaunching', function () {
+      platform.debugLog('DidFinishLaunching');
+      platform.getServerLightList();
+    });
     if(this.httpUsername && this.httpPassword) {
       this.debugLog('Using Basic Authorization!')
     }
@@ -86,7 +71,6 @@ class MiLightHubPlatform {
     if (!this.debug) {
       return;
     }
-
     const debugLogDelimiter = 'DEBUG: ';
     if (Array.isArray(message)) {
       for (var i = 0, len = message.length; i < len; i++) {
@@ -104,7 +88,6 @@ class MiLightHubPlatform {
   getServerLightList () {
     const platform = this;
     const settings_path = '/settings';
-
     this.debugLog('Querying ' + settings_path);
     this.apiCall(settings_path).then(response => {
       if (response) {
@@ -132,7 +115,6 @@ class MiLightHubPlatform {
           var lightInfo = { name: name, device_id: values[1], group_id: values[2], remote_type: values[0], uid: '0x' + values[1].toString(16).toUpperCase() + '/' + values[0] + '/' + values[2]};
           lightList.push(lightInfo);
         }
-
         platform.syncLightLists(lightList);
       }
       setTimeout(platform.getServerLightList.bind(platform), platform.syncHubInterval*1000);
@@ -142,7 +124,6 @@ class MiLightHubPlatform {
   syncLightLists (lightList) {
     const platform = this;
     const HAPModelCharacteristic = '00000021-0000-1000-8000-0026BB765291'; // = 'Model' - Use the model characteristic to determine if backchannel & ColorTemperature is set as a characteristic
-
     // Remove light from HomeKit if it does not exist in MiLight Hub; Otherwise add to MQTT subscription if necessary
     this.accessories.forEach((milight, idx) => {
       var found = false;
@@ -154,7 +135,6 @@ class MiLightHubPlatform {
             milight.name === lightInfo.name) {
           // already exists
           found = true;
-
           if(found && platform.characteristicDetails !== milight.characteristics[HAPModelCharacteristic].value) {
             this.debugLog('Characteristics mismatch detected, Removing accessory!');
             characteristicsMatch = false;
@@ -163,27 +143,21 @@ class MiLightHubPlatform {
           }
         }
       });
-
       if (!found || !characteristicsMatch) {
         let removeMessage = 'Removing ' + milight.name + ' from HomeKit because ';
-
         if(!found){
           removeMessage += 'it could not be found in MiLight Hub';
         } else {
           removeMessage += 'a characteristics mismatch was detected';
         }
-
         this.log(removeMessage);
         this.accessories.splice(idx, 1);
-
         if(platform.mqttClient){
           this.unsubscribeMQTT(milight);
         }
-
         this.api.unregisterPlatformAccessories('homebridge-milighthub-platform', 'MiLightHubPlatform', [milight.accessory]);
       }
     });
-
     // Add light to HomeKit
     lightList.forEach(lightInfo => {
       var found = false;
@@ -195,12 +169,10 @@ class MiLightHubPlatform {
           found = true;
         }
       });
-
       if (!found) {
         this.log('Adding ' + lightInfo.name + ' to HomeKit');
         const milight = new MiLight(platform, lightInfo);
         this.accessories.push(milight);
-
         this.api.registerPlatformAccessories('homebridge-milighthub-platform', 'MiLightHubPlatform', [milight.accessory]);
       }
     });
@@ -238,10 +210,8 @@ class MiLightHubPlatform {
       if(path !== '/settings' && json === null){
         this.cachedPromises[path] = 'PENDING';
       }
-
       this.cachedPromises[path + '_promise'] = new Promise(resolve => {
         const url = 'http://' + this.host + path;
-
         var http_header;
         if(json === null){
           http_header ={
@@ -257,12 +227,10 @@ class MiLightHubPlatform {
             }
           };
         }
-
         if(this.httpUsername && this.httpPassword){
           var base64AuthorizationHeader = new Buffer(this.httpUsername + ':' + this.httpPassword).toString('base64');
           http_header.headers.Authorization = 'Basic ' + base64AuthorizationHeader;
         }
-
         const req = http.request(url, http_header, res => {
           let recvBody = '';
           res.on('data', chunk => {
@@ -292,42 +260,32 @@ class MiLightHubPlatform {
         }
         req.end();
       });
-
       return this.cachedPromises[path + "_promise"];
     }
   }
 
   initializeMQTT(){
     var platform = this;
-
     var mqtt_options = {
       clientId:"homebridge_milight_hub"
     };
-
     if(platform.mqttUser !== "" && platform.mqttPass !== ""){
       mqtt_options.username = platform.mqttUser;
       mqtt_options.password = platform.mqttPass;
     }
-
     platform.mqttClient = mqtt.connect('mqtt://' + platform.mqttServer, mqtt_options);
-
     if(platform.backchannel && platform.mqttClient._events.message === undefined){
       platform.mqttClient.on('message',function(topic, message, packet){ // create a listener if no one was created yet
         platform.accessories.forEach(function(milight){
           var mqttCurrentLightPath = platform.mqttStateTopicPattern.replace(':hex_device_id', '0x' + milight.device_id.toString(16).toUpperCase()).replace(':dec_device_id', milight.device_id).replace(':device_id', milight.device_id).replace(':device_type', milight.remote_type).replace(':group_id', milight.group_id);
-
           if(topic.includes(mqttCurrentLightPath) && Buffer.compare(milight.currentState.lastMQTTMessage,message) !== 0){
             milight.currentState.lastMQTTMessage = message
-
             var returnValue = JSON.parse(message);
             platform.debugLog(['Parsing MQTT message from ' + topic + ': ', returnValue]);
-
             milight.currentState.state = returnValue.state === 'ON' || returnValue.bulb_mode === 'night';
             milight.currentState.level = returnValue.bulb_mode === 'night' ? 1 : Math.round(returnValue.brightness / 2.55);
-
             milight.currentState.hue = returnValue.bulb_mode === 'color' ? (platform.RGBtoHueSaturation(returnValue.color.r, returnValue.color.g, returnValue.color.b)).h : (platform.HomeKitColorTemperatureToHueSaturation(returnValue.color_temp)).h;
             milight.currentState.saturation = returnValue.bulb_mode === 'color' ? (platform.RGBtoHueSaturation(returnValue.color.r, returnValue.color.g, returnValue.color.b)).s : (platform.HomeKitColorTemperatureToHueSaturation(returnValue.color_temp)).s;
-
             milight.currentState.color_temp = returnValue.bulb_mode === 'color' ? null : returnValue.color_temp;
           }
         })
@@ -337,7 +295,6 @@ class MiLightHubPlatform {
 
   subscribeMQTT(milight) {
     var mqttPath = this.mqttStateTopicPattern.replace(':hex_device_id', '0x' + milight.device_id.toString(16).toUpperCase()).replace(':dec_device_id', milight.device_id).replace(':device_id', milight.device_id).replace(':device_type', milight.remote_type).replace(':group_id', milight.group_id);
-
     if(!Object.keys(this.mqttClient['_resubscribeTopics']).includes(mqttPath)){
       this.mqttClient.subscribe(mqttPath);
     }
@@ -345,7 +302,6 @@ class MiLightHubPlatform {
 
   unsubscribeMQTT(milight) {
     var mqttPath = this.mqttStateTopicPattern.replace(':hex_device_id', '0x' + milight.device_id.toString(16).toUpperCase()).replace(':dec_device_id', milight.device_id).replace(':device_id', milight.device_id).replace(':device_type', milight.remote_type).replace(':group_id', milight.group_id);
-
     if(Object.keys(this.mqttClient['_resubscribeTopics']).includes(mqttPath)){
       this.mqttClient.unsubscribe(mqttPath);
     }
@@ -364,7 +320,6 @@ class MiLightHubPlatform {
     b /= 255;
     max = Math.max(r, g, b);
     min = Math.min(r, g, b);
-
     d = max - min;
     switch (max) {
       case r:
@@ -377,7 +332,6 @@ class MiLightHubPlatform {
         h = (r - g) / d + 4;
     }
     h /= 6;
-
     return {
       h: Math.round(h * 360),
       s: Math.round(100 * (0 === max ? 0 : d / max))
@@ -396,7 +350,6 @@ class MiLightHubPlatform {
     let d = max - min,
         h = 0,
         s = max ? 100 * d / max : 0;
-
     if (d) {
       switch (max) {
         case rgb[0]: h = (rgb[1] - rgb[2]) / d + (rgb[1] < rgb[2] ? 6 : 0); break;
@@ -433,19 +386,14 @@ class MiLight {
     this.applyCallbacks(this.accessory);
     this.currentState = { state: false, level: 100, saturation: 0, hue: 0, color_temp: 0, lastMQTTMessage: Buffer.from('') };
     this.designatedState = {};
-
     this.characteristics = {};
-
     for (let services of this.accessory.services) {
       var service = JSON.parse(JSON.stringify(services));
-
       for (let characteristic of service.characteristics){
         this.characteristics[characteristic.UUID] = characteristic;
       }
     }
-
     this.characteristics = JSON.parse(JSON.stringify(this.characteristics));
-
     this.myTimeout = null;
   }
 
@@ -460,15 +408,12 @@ class MiLight {
     } else {
       this.log('Error: No information service found');
     }
-
     const lightbulbService = new Service.Lightbulb(this.name);
     lightbulbService.addCharacteristic(new Characteristic.Brightness());
-
     if (this.platform.rgbRemotes.includes(this.remote_type) || this.platform.rgbcctRemotes.includes(this.remote_type)) {
       lightbulbService.addCharacteristic(new Characteristic.Saturation());
       lightbulbService.addCharacteristic(new Characteristic.Hue());
     }
-
     if (this.platform.whiteRemotes.includes(this.remote_type) || (this.platform.rgbcctMode && this.platform.rgbcctRemotes.includes(this.remote_type))) {
       lightbulbService
           .addCharacteristic(new Characteristic.ColorTemperature())
@@ -482,15 +427,12 @@ class MiLight {
 
   applyCallbacks (accessory) {
     const lightbulbService = accessory.getService(Service.Lightbulb);
-
     if (!lightbulbService) {
       this.log('Error: unconfigured accessory without light service found.');
       return;
     }
-
     if (lightbulbService.getCharacteristic(Characteristic.On)) {
       this.platform.debugLog('Characteristic.On is set');
-
       if(this.platform.backchannel) {
         lightbulbService.getCharacteristic(Characteristic.On)
             .on('get', this.getPowerState.bind(this));
@@ -498,10 +440,8 @@ class MiLight {
       lightbulbService.getCharacteristic(Characteristic.On)
           .on('set', this.setPowerState.bind(this));
     }
-
     if (lightbulbService.getCharacteristic(Characteristic.Brightness)) {
       this.platform.debugLog('Characteristic.Brightness is set');
-
       if(this.platform.backchannel) {
         lightbulbService.getCharacteristic(Characteristic.Brightness)
             .on('get', this.getBrightness.bind(this));
@@ -509,10 +449,8 @@ class MiLight {
       lightbulbService.getCharacteristic(Characteristic.Brightness)
           .on('set', this.setBrightness.bind(this));
     }
-
     if (lightbulbService.getCharacteristic(Characteristic.Hue)) {
       this.platform.debugLog('Characteristic.Hue is set');
-
       if(this.platform.backchannel) {
         lightbulbService.getCharacteristic(Characteristic.Hue)
             .on('get', this.getHue.bind(this));
@@ -520,10 +458,8 @@ class MiLight {
       lightbulbService.getCharacteristic(Characteristic.Hue)
           .on('set', this.setHue.bind(this));
     }
-
     if (lightbulbService.getCharacteristic(Characteristic.Saturation)) {
       this.platform.debugLog('Characteristic.Saturation is set');
-
       if(this.platform.backchannel) {
         lightbulbService.getCharacteristic(Characteristic.Saturation)
             .on('get', this.getSaturation.bind(this));
@@ -531,11 +467,8 @@ class MiLight {
       lightbulbService.getCharacteristic(Characteristic.Saturation)
           .on('set', this.setSaturation.bind(this));
     }
-
-
     if(this.platform.rgbcctMode && (lightbulbService.getCharacteristic(Characteristic.ColorTemperature))) {
       this.platform.debugLog('Characteristic.ColorTemperature is set');
-
       if(this.platform.backchannel) {
         lightbulbService.getCharacteristic(Characteristic.ColorTemperature)
             .on('get', this.getColorTemperature.bind(this));
@@ -548,15 +481,11 @@ class MiLight {
   async getState () {
     if (!this.platform.mqttClient) {
       var path = '/gateways/' + '0x' + this.device_id.toString(16) + '/' + this.remote_type + '/' + this.group_id;
-
       var returnValue = JSON.parse(await this.platform.apiCall(path));
-
       this.currentState.state = returnValue.state === 'ON' || returnValue.bulb_mode === 'night';
       this.currentState.level = returnValue.bulb_mode === 'night' ? 1 : Math.round(returnValue.brightness / 2.55);
-
       this.currentState.hue = returnValue.bulb_mode === 'color' ? this.platform.RGBtoHueSaturation(returnValue.color.r, returnValue.color.g, returnValue.color.b).h : this.platform.HomeKitColorTemperatureToHueSaturation(returnValue.color_temp).h;
       this.currentState.saturation = returnValue.bulb_mode === 'color' ? this.platform.RGBtoHueSaturation(returnValue.color.r, returnValue.color.g, returnValue.color.b).s : this.platform.HomeKitColorTemperatureToHueSaturation(returnValue.color_temp).s;
-
       this.currentState.color_temp = returnValue.bulb_mode === 'color' ? null : returnValue.color_temp;
     }
   }
@@ -585,7 +514,6 @@ class MiLight {
     const cstate = this.currentState;
     this.designatedState = {};
     const command = {};
-
     if (dstate.state) {
       if (dstate.level === undefined) {
         dstate.level = cstate.level;
@@ -619,7 +547,6 @@ class MiLight {
       command.hue = dstate.hue;
       cstate.hue = dstate.hue;
     }
-
     if(!this.platform.rgbcctMode){
       let useWhiteMode = this.testWhiteMode(dstate.hue, dstate.saturation);
       if(useWhiteMode){
@@ -642,85 +569,70 @@ class MiLight {
       command.color_temp = dstate.color_temp;
       cstate.color_temp = dstate.color_temp;
     }
-
     this.platform.sendCommand(this.device_id, this.remote_type, this.group_id, command);
   }
 
   /** MiLight shiz */
   async getPowerState (callback) {
     this.platform.debugLog(['[getPowerState] GET Request']);
-
     await this.getState();
     callback(null, this.currentState.state)
   }
 
   setPowerState (powerOn, callback) {
     this.designatedState.state = powerOn;
-
     this.platform.debugLog(['[setPowerState] ' + powerOn]);
-
     this.changeState();
     callback(null);
   }
 
   async getBrightness (callback) {
     this.platform.debugLog(['[getBrightness] GET Request']);
-
     await this.getState();
     callback(null, this.currentState.level);
   }
 
   setBrightness (level, callback) {
     this.designatedState.level = level;
-
     this.platform.debugLog(['[setBrightness] ' + level]);
-
     this.changeState();
     callback(null);
   }
 
   async getHue (callback) {
     this.platform.debugLog(['[getHue] GET Request']);
-
     await this.getState();
     callback(null, this.currentState.hue);
   }
 
   setHue (value, callback) {
     this.designatedState.hue = value;
-
     this.platform.debugLog(['[setHue] ' + value]);
-
     this.changeState();
     callback(null);
   }
 
   async getSaturation (callback) {
     this.platform.debugLog(['[getSaturation] GET Request']);
-
     await this.getState();
     callback(null, this.currentState.saturation);
   }
 
   setSaturation (value, callback) {
     this.designatedState.saturation = value;
-
     this.platform.debugLog(['[setSaturation] ' + value]);
-
     this.changeState();
     callback(null);
   }
 
   async getColorTemperature (callback) {
     this.platform.debugLog(['[getColorTemperature] GET Request']);
-
     await this.getState();
     callback(null, this.currentState.color_temp)
   }
 
   setColorTemperature (value, callback) {
     this.designatedState.color_temp = value;
-
     this.platform.debugLog(['[setColorTemperature] ' + value]);
 
     this.changeState();
