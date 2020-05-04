@@ -540,7 +540,9 @@ class MiLight {
       cstate.saturation = dstate.saturation;
     }
     if (dstate.hue !== undefined) {
-      command.hue = dstate.hue;
+      if(!(dstate.saturation === 0)) {
+        command.hue = dstate.hue;
+      }
       cstate.hue = dstate.hue;
     }
     if (!this.platform.rgbcctMode) {
