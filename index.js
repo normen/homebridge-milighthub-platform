@@ -523,6 +523,9 @@ class MiLight {
     } else if (dstate.state !== undefined) {
       command.state = 'Off';
       cstate.state = dstate.state;
+      if(dstate.level !== undefined){
+        cstate.level = dstate.level;
+      }
     }
     if (dstate.saturation !== undefined) {
       if (dstate.saturation === 0) {
