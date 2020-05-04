@@ -35,7 +35,7 @@ class MiLightHubPlatform {
     // but let the user choose because the RGB+CCT lamps do have seperate LEDs for the white temperatures and seperate for the RGB colors
     // controlling them in RGB mode lets seem the RGB screen to be buggy (orange colors will sometimes change to white_mode)
     // controlling them in RGB+CCT mode lets the color saving / favorite function to malfunction
-    this.rgbcctMode = config.rgbcctMode === null ? false : this.rgbcctMode = config.rgbcctMode !== false;
+    this.rgbcctMode = config.rgbcctMode === undefined ? false : this.rgbcctMode = config.rgbcctMode !== false;
     this.characteristicDetails = '0x' + (this.backchannel ? 1 : 0).toString() + ',0x' + (this.rgbcctMode ? 1 : 0).toString();
     this.whiteRemotes = ['cct', 'fut091']; // only Cold white + Warm white remotes
     this.rgbRemotes = ['rgbw', 'rgb', 'fut020']; // only RGB remotes
