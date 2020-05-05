@@ -517,6 +517,7 @@ class MiLight {
           command.level = dstate.level;
           cstate.level = dstate.level;
         } else {
+          this.accessory.getService(Service.Lightbulb).getCharacteristic(Characteristic.Brightness).updateValue(cstate.level);
           cstate.powerOffByBrightness = false;
         }
 
@@ -530,7 +531,6 @@ class MiLight {
       cstate.state = dstate.state;
       if(dstate.level === 0){
         cstate.powerOffByBrightness = true;
-        this.accessory.getService(Service.Lightbulb).getCharacteristic(Characteristic.Brightness).updateValue(cstate.level);
       }
       if (dstate.level !== undefined) {
         cstate.level = dstate.level;
