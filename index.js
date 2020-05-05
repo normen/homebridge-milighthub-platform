@@ -513,8 +513,13 @@ class MiLight {
       }
       if (dstate.level > 1) {
         command.state = 'On';
-        command.level = dstate.level;
-        cstate.level = dstate.level;
+        if(!cstate.powerOffByBrightness){
+          command.level = dstate.level;
+          cstate.level = dstate.level;
+        } else {
+          cstate.powerOffByBrightness = false;
+        }
+
       } else if (dstate.level <= 1) {
         command.commands = ['night_mode'];
         cstate.level = dstate.level;
@@ -523,6 +528,10 @@ class MiLight {
     } else if (dstate.state !== undefined) {
       command.state = 'Off';
       cstate.state = dstate.state;
+      if(dstate.level === 0){
+        cstate.powerOffByBrightness = true;
+        this.accessory.getService(Service.Lightbulb).getCharacteristic(Characteristic.Brightness).updateValue(cstate.level);
+      }
       if (dstate.level !== undefined) {
         cstate.level = dstate.level;
       }
