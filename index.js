@@ -532,9 +532,6 @@ class MiLight {
       if(dstate.level === 0){
         cstate.powerOffByBrightness = true;
       }
-      if (dstate.level !== undefined) {
-        cstate.level = dstate.level;
-      }
     }
     if (dstate.saturation !== undefined) {
       if (dstate.saturation === 0) {
