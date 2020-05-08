@@ -1,4 +1,4 @@
-# homebridge-milighthub-platform [![NPM Version](https://img.shields.io/npm/v/homebridge-milighthub-platform.svg)](https://www.npmjs.com/package/homebridge-milighthub-platform)
+# homebridge-milighthub-platform [![NPM Version](https://img.shields.io/npm/v/homebridge-milighthub-platform.svg)](https://www.npmjs.com/package/homebridge-milighthub-platform) [![verified-by-homebridge](https://badgen.net/badge/homebridge/verified/purple)](https://github.com/homebridge/homebridge/wiki/Verified-Plugins)
 Homebridge plugin to control MiLight / EULight lamps through the Open Source [MiLight Hub](https://github.com/sidoh/esp8266_milight_hub).
 
 ## Features
