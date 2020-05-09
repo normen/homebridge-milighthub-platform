@@ -123,7 +123,6 @@ class MiLightHubPlatform {
 
   syncLightLists (lightList) {
     const platform = this;
-    const HAPModelCharacteristic = '00000021-0000-1000-8000-0026BB765291'; // = 'Model' - Use the model characteristic to determine if backchannel & ColorTemperature is set as a characteristic
     // Remove light from HomeKit if it does not exist in MiLight Hub; Otherwise add to MQTT subscription if necessary
     this.accessories.forEach((milight, idx) => {
       var found = false;
@@ -134,7 +133,7 @@ class MiLightHubPlatform {
           milight.remote_type === lightInfo.remote_type &&
           milight.name === lightInfo.name)) !== undefined) {
         found = true;
-        if (platform.characteristicDetails !== milight.characteristics[HAPModelCharacteristic].value) {
+        if (platform.characteristicDetails !== milight.accessory.getService(Service.AccessoryInformation).getCharacteristic(Characteristic.Model).value) {
           this.debugLog('Characteristics mismatch detected, Removing accessory!');
           characteristicsMatch = false;
         } else if (this.backchannel && platform.mqttClient) {
@@ -379,14 +378,6 @@ class MiLight {
     this.applyCallbacks(this.accessory);
     this.currentState = { state: false, level: 100, saturation: 0, hue: 0, color_temp: 0, lastMQTTMessage: Buffer.from('') };
     this.designatedState = {};
-    this.characteristics = {};
-    for (const services of this.accessory.services) {
-      var service = JSON.parse(JSON.stringify(services));
-      for (const characteristic of service.characteristics) {
-        this.characteristics[characteristic.UUID] = characteristic;
-      }
-    }
-    this.characteristics = JSON.parse(JSON.stringify(this.characteristics));
     this.myTimeout = null;
   }
 
