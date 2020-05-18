@@ -266,8 +266,6 @@ class MiLightHubPlatform {
       mqtt_options.password = platform.mqttPass;
     }
     platform.mqttClient = mqtt.connect('mqtt://' + platform.mqttServer, mqtt_options);
-
-    
     if (platform.backchannel && platform.mqttClient._events.message === undefined) {
       platform.mqttClient.on('message', function (topic, message, packet) { // create a listener if no one was created yet
         platform.accessories.forEach(function (milight) {
