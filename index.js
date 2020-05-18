@@ -259,13 +259,15 @@ class MiLightHubPlatform {
   initializeMQTT () {
     var platform = this;
     var mqtt_options = {
-      clientId: 'homebridge_milight_hub'
+      clientId: 'homebridge_milight_hub-' + Math.random().toString(16).substr(2, 8)
     };
     if (platform.mqttUser !== '' && platform.mqttPass !== '') {
       mqtt_options.username = platform.mqttUser;
       mqtt_options.password = platform.mqttPass;
     }
     platform.mqttClient = mqtt.connect('mqtt://' + platform.mqttServer, mqtt_options);
+
+    
     if (platform.backchannel && platform.mqttClient._events.message === undefined) {
       platform.mqttClient.on('message', function (topic, message, packet) { // create a listener if no one was created yet
         platform.accessories.forEach(function (milight) {
