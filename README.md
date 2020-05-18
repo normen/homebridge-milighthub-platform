@@ -1,4 +1,4 @@
-# homebridge-milighthub-platform [![NPM Version](https://img.shields.io/npm/v/homebridge-milighthub-platform.svg)](https://www.npmjs.com/package/homebridge-milighthub-platform)
+# homebridge-milighthub-platform [![NPM Version](https://img.shields.io/npm/v/homebridge-milighthub-platform.svg)](https://www.npmjs.com/package/homebridge-milighthub-platform) [![verified-by-homebridge](https://badgen.net/badge/homebridge/verified/purple)](https://github.com/homebridge/homebridge/wiki/Verified-Plugins)
 Homebridge plugin to control MiLight / EULight lamps through the Open Source [MiLight Hub](https://github.com/sidoh/esp8266_milight_hub).
 
 ## Features
@@ -52,3 +52,13 @@ If MQTT is configured in the MiLight Hub then the plugin will automatically read
 ## Limitation
 #### RGB+CCT / RGBW(W) lamps
 RGB+CCT / RGBW(W) milights have two modes, color temperature and RGB. Unfortunately HomeKit does not support lights with both modes active at the same time, so it's not supported to expose both RGB and Kelvin properties to Homekit. The default mode exposes only an RGB property, but detects when you set a color that is close to the colors used in the temperature circle in HomeKit and uses the color temperature mode on the milights in this case. This way you can still make use of favourite light-settings in the Home app. If you want to expose both properties anyway you can enable the RGB+CCT mode.
+
+## Development
+If you want new features or improve the plugin, you're very welcome to do so. The projects `devDependencies` include homebridge and the `npm run test` command has been adapted so that you can run a test instance of homebridge during development. 
+#### Setup
+- clone github repo
+- `npm install` in the project folder
+- create `.homebridge` folder in project root
+- add `config.json` with appropriate content to `.homebridge` folder
+- run `npm run test` to start the homebridge instance for testing
+
