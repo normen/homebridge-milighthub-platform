@@ -27,6 +27,7 @@ class MiLightHubPlatform {
     this.backchannel = config.backchannel || false;
     this.forceHTTP = config.forceHTTP || false;
     this.debug = config.debug || false;
+    this.darkMode = config.darkMode || false;
     this.host = config.host || 'milight-hub.local';
     this.syncHubInterval = config.syncHubInterval || 10;
     this.commandDelay = config.commandDelay || 100;
@@ -259,7 +260,7 @@ class MiLightHubPlatform {
   initializeMQTT () {
     var platform = this;
     var mqtt_options = {
-      clientId: 'homebridge_milight_hub'
+      clientId: 'homebridge_milight_hub-' + Math.random().toString(16).substr(2, 8)
     };
     if (platform.mqttUser !== '' && platform.mqttPass !== '') {
       mqtt_options.username = platform.mqttUser;
@@ -498,25 +499,44 @@ class MiLight {
     const cstate = this.currentState;
     this.designatedState = {};
     const command = {};
-    if (dstate.state) {
-      if (dstate.level === undefined) {
-        dstate.level = cstate.level;
-      }
-      if (dstate.level > 1) {
-        command.state = 'On';
-        command.level = dstate.level;
-        cstate.level = dstate.level;
-      } else if (dstate.level <= 1) {
-        command.commands = ['night_mode'];
-        cstate.level = dstate.level;
-      }
-      cstate.state = dstate.state;
-    } else if (dstate.state !== undefined) {
-      command.state = 'Off';
-      cstate.state = dstate.state;
-      if (dstate.level !== undefined) {
-        cstate.level = dstate.level;
-      }
+    if(typeof dstate.state !== 'undefined'){
+        if (dstate.state === true && dstate.level !== 0) {
+          command.state = 'On';
+          if(this.platform.darkMode){
+            if(typeof dstate.level === 'undefined' && typeof cstate.cachedLevel !== 'undefined' && (dstate.state === true || cstate.state !== false)){
+              dstate.level = cstate.cachedLevel;
+            } else if(typeof dstate.level === 'number'){
+              if(cstate.powerOffByBrightness && dstate.level === 100){
+                cstate.powerOffByBrightness = false;
+                dstate.level = cstate.cachedLevel;
+                this.accessory.getService(Service.Lightbulb).getCharacteristic(Characteristic.Brightness).updateValue(dstate.level);
+              } else if (cstate.powerOffByBrightness === false) {          
+                cstate.cachedLevel = cstate.level;
+              }
+            }
+          }
+          if (dstate.level > 1) {
+            command.level = dstate.level;
+          } else if (dstate.level === 1) {
+            command.commands = ['night_mode'];
+          }
+          cstate.level = dstate.level;
+        } else {
+          command.state = 'Off';
+          if(this.platform.darkMode){
+            if(cstate.level !== 1){
+              cstate.cachedLevel = cstate.level;
+            }
+            if(dstate.level === 0){
+              cstate.powerOffByBrightness = true;
+            } else {
+              cstate.powerOffByBrightness = false;
+            }
+            command.level = 1;
+            cstate.level = command.level;
+          }
+        }
+        cstate.state = command.state;
     }
     if (dstate.saturation !== undefined) {
       if (dstate.saturation === 0) {
