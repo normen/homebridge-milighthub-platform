@@ -4,18 +4,18 @@
   "headerDisplay": "Configure your lights in your [MiLight Hub](http://milight-hub.local)",
   "footerDisplay": "For documentation please see http://github.com/normen/homebridge-milighthub-platform",
   "schema": {
-    "name": {
-      "title": "Log Name",
-      "type": "string",
-      "default": "MiLightHubPlatform",
-      "description": "The name of the platform as it appears in the homebridge log",
-      "required": false
-    },
     "host": {
       "title": "Hostname",
       "type": "string",
       "default": "milight-hub.local",
       "description": "The hostname or IP address of the MiLight Hub",
+      "required": false
+    },
+    "name": {
+      "title": "Log Name",
+      "type": "string",
+      "default": "MiLightHubPlatform",
+      "description": "The name of the platform as it appears in the homebridge log",
       "required": false
     },
     "httpUsername": {
@@ -37,6 +37,13 @@
       "type": "boolean",
       "default": false,
       "description": "If enabled HomeKit will update if MiLight hub is controlled otherwise",
+      "required": false
+    },
+    "darkMode": {
+      "title": "Mitigate bright flashing of lights",
+      "type": "boolean",
+      "default": false,
+      "description": "A feature to mitigate the bright flashing of the lights if you turn them on with a low brightness value & to cache the last value before power off",
       "required": false
     },
     "rgbcctMode": {
@@ -83,14 +90,15 @@
       "expanded": false,
       "title": "Advanced",
       "items": [
+        "name",
         "httpUsername",
         "httpPassword",
         "backchannel",
+        "darkMode",
         "rgbcctMode",
         "forceHTTP",
         "syncHubInterval",
         "commandDelay",
-        "name",
         "debug"
       ]
     }

@@ -7,6 +7,7 @@ For documentation please see the [README](https://github.com/normen/homebridge-m
 ## 0.3.6
 
 - use unique mqtt id
+- added darkMode
 
 ## 0.3.5
 
