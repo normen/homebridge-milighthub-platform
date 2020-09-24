@@ -499,44 +499,44 @@ class MiLight {
     const cstate = this.currentState;
     this.designatedState = {};
     const command = {};
-    if(typeof dstate.state !== 'undefined'){
-        if (dstate.state === true && dstate.level !== 0) {
-          command.state = 'On';
-          if(this.platform.darkMode){
-            if(typeof dstate.level === 'undefined' && typeof cstate.cachedLevel !== 'undefined' && (dstate.state === true || cstate.state !== false)){
+    if (typeof dstate.state !== 'undefined') {
+      if (dstate.state === true && dstate.level !== 0) {
+        command.state = 'On';
+        if (this.platform.darkMode) {
+          if (typeof dstate.level === 'undefined' && typeof cstate.cachedLevel !== 'undefined' && (dstate.state === true || cstate.state !== false)) {
+            dstate.level = cstate.cachedLevel;
+          } else if (typeof dstate.level === 'number') {
+            if (cstate.powerOffByBrightness && dstate.level === 100) {
+              cstate.powerOffByBrightness = false;
               dstate.level = cstate.cachedLevel;
-            } else if(typeof dstate.level === 'number'){
-              if(cstate.powerOffByBrightness && dstate.level === 100){
-                cstate.powerOffByBrightness = false;
-                dstate.level = cstate.cachedLevel;
-                this.accessory.getService(Service.Lightbulb).getCharacteristic(Characteristic.Brightness).updateValue(dstate.level);
-              } else if (cstate.powerOffByBrightness === false) {          
-                cstate.cachedLevel = cstate.level;
-              }
-            }
-          }
-          if (dstate.level > 1) {
-            command.level = dstate.level;
-          } else if (dstate.level === 1) {
-            command.commands = ['night_mode'];
-          }
-          cstate.level = dstate.level;
-        } else {
-          command.state = 'Off';
-          if(this.platform.darkMode){
-            if(cstate.level !== 1){
+              this.accessory.getService(Service.Lightbulb).getCharacteristic(Characteristic.Brightness).updateValue(dstate.level);
+            } else if (cstate.powerOffByBrightness === false) {
               cstate.cachedLevel = cstate.level;
             }
-            if(dstate.level === 0){
-              cstate.powerOffByBrightness = true;
-            } else {
-              cstate.powerOffByBrightness = false;
-            }
-            command.level = 1;
-            cstate.level = command.level;
           }
         }
-        cstate.state = command.state;
+        if (dstate.level > 1) {
+          command.level = dstate.level;
+        } else if (dstate.level === 1) {
+          command.commands = ['night_mode'];
+        }
+        cstate.level = dstate.level;
+      } else {
+        command.state = 'Off';
+        if (this.platform.darkMode) {
+          if (cstate.level !== 1) {
+            cstate.cachedLevel = cstate.level;
+          }
+          if (dstate.level === 0) {
+            cstate.powerOffByBrightness = true;
+          } else {
+            cstate.powerOffByBrightness = false;
+          }
+          command.level = 1;
+          cstate.level = command.level;
+        }
+      }
+      cstate.state = command.state;
     }
     if (dstate.saturation !== undefined) {
       if (dstate.saturation === 0) {
@@ -551,7 +551,7 @@ class MiLight {
       cstate.saturation = dstate.saturation;
     }
     if (dstate.hue !== undefined) {
-      if(!(dstate.saturation === 0)) {
+      if (!(dstate.saturation === 0)) {
         command.hue = dstate.hue;
       }
       cstate.hue = dstate.hue;
