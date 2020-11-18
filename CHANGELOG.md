@@ -4,28 +4,32 @@ This is the change log for the plugin, all relevant changes will be listed here.
 
 For documentation please see the [README](https://github.com/normen/homebridge-milighthub-platform/blob/master/README.md)
 
+## 0.4.1
+
+- Fix light flashing when night mode is activated (#6)
+
 ## 0.4.0
 
-- use unique mqtt id
-- added darkMode
+- Use unique mqtt id
+- Added darkMode
 
 ## 0.3.5
 
-- avoid sending hue when setting to white
+- Avoid sending hue when setting to white
 
 ## 0.3.4
 
-- small fixes
+- Small fixes
 
 ## 0.3.0
 
-- all planned features implemented (thanks Zer0x00!)
+- All planned features implemented (thanks Zer0x00!)
 
 ## 0.2.0
 
-- fix update order by caching sequential homekit commands
+- Fix update order by caching sequential homekit commands
 
 ## 0.1.1
 
-- cleanup hue/sat logic
-- make night mode work
+- Cleanup hue/sat logic
+- Make night mode work
