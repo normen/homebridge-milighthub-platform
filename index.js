@@ -518,6 +518,7 @@ class MiLight {
         if (dstate.level > 1) {
           command.level = dstate.level;
         } else if (dstate.level === 1) {
+          delete command.state;
           command.commands = ['night_mode'];
         }
         cstate.level = dstate.level;
