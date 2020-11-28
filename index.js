@@ -16,7 +16,7 @@ module.exports = function (homebridge) {
 // config may be null
 // api may be null if launched from old homebridge version
 class MiLightHubPlatform {
-  constructor (log, config, api) {
+  constructor(log, config, api) {
     if (!config || !api) return;
     var platform = this;
     this.api = api;
@@ -53,7 +53,7 @@ class MiLightHubPlatform {
   }
 
   // Function invoked when homebridge tries to restore cached accessory.
-  configureAccessory (accessory) {
+  configureAccessory(accessory) {
     if (!this.config) { // happens if plugin is disabled and still active accessories
       return;
     }
@@ -64,11 +64,11 @@ class MiLightHubPlatform {
 
   // Handler will be invoked when user try to config your plugin.
   // Callback can be cached and invoke when necessary.
-  configurationRequestHandler (context, request, callback) {
+  configurationRequestHandler(context, request, callback) {
     callback(null);
   }
 
-  debugLog (message) {
+  debugLog(message) {
     if (!this.debug) {
       return;
     }
@@ -86,7 +86,7 @@ class MiLightHubPlatform {
     }
   }
 
-  getServerLightList () {
+  getServerLightList() {
     const platform = this;
     const settings_path = '/settings';
     this.debugLog('Querying ' + settings_path);
@@ -113,7 +113,7 @@ class MiLightHubPlatform {
         }
         for (var name in settings.group_id_aliases) {
           var values = settings.group_id_aliases[name];
-          var lightInfo = { name: name, device_id: values[1], group_id: values[2], remote_type: values[0], uid: '0x' + values[1].toString(16).toUpperCase() + '/' + values[0] + '/' + values[2] };
+          var lightInfo = {name: name, device_id: values[1], group_id: values[2], remote_type: values[0], uid: '0x' + values[1].toString(16).toUpperCase() + '/' + values[0] + '/' + values[2]};
           lightList.push(lightInfo);
         }
         platform.syncLightLists(lightList);
@@ -122,7 +122,7 @@ class MiLightHubPlatform {
     });
   }
 
-  syncLightLists (lightList) {
+  syncLightLists(lightList) {
     const platform = this;
     // Remove light from HomeKit if it does not exist in MiLight Hub; Otherwise add to MQTT subscription if necessary
     this.accessories.forEach((milight, idx) => {
@@ -130,9 +130,9 @@ class MiLightHubPlatform {
       var characteristicsMatch = true;
       if (lightList.find(lightInfo => (
         milight.group_id === lightInfo.group_id &&
-          milight.device_id === lightInfo.device_id &&
-          milight.remote_type === lightInfo.remote_type &&
-          milight.name === lightInfo.name)) !== undefined) {
+        milight.device_id === lightInfo.device_id &&
+        milight.remote_type === lightInfo.remote_type &&
+        milight.name === lightInfo.name)) !== undefined) {
         found = true;
         if (platform.characteristicDetails !== milight.accessory.getService(Service.AccessoryInformation).getCharacteristic(Characteristic.Model).value) {
           this.debugLog('Characteristics mismatch detected, Removing accessory!');
@@ -160,9 +160,9 @@ class MiLightHubPlatform {
     lightList.forEach(lightInfo => {
       if (this.accessories.find(milight => (
         milight.group_id === lightInfo.group_id &&
-          milight.device_id === lightInfo.device_id &&
-          milight.remote_type === lightInfo.remote_type &&
-          milight.name === lightInfo.name)) === undefined) {
+        milight.device_id === lightInfo.device_id &&
+        milight.remote_type === lightInfo.remote_type &&
+        milight.name === lightInfo.name)) === undefined) {
         this.log('Adding ' + lightInfo.name + ' to HomeKit');
         const milight = new MiLight(platform, lightInfo);
         this.accessories.push(milight);
@@ -171,7 +171,7 @@ class MiLightHubPlatform {
     });
   }
 
-  sendCommand (deviceId, remoteType, groupId, command) {
+  sendCommand(deviceId, remoteType, groupId, command) {
     if (this.mqttClient) {
       var path = this.mqttTopicPattern.replace(':hex_device_id', '0x' + deviceId.toString(16).toUpperCase()).replace(':dec_device_id', deviceId).replace(':device_id', deviceId).replace(':device_type', remoteType).replace(':group_id', groupId);
       const sendBody = JSON.stringify(command);
@@ -189,7 +189,7 @@ class MiLightHubPlatform {
     }
   }
 
-  async apiCall (path, json = null) {
+  async apiCall(path, json = null) {
     // MiLight Hub lets you know all properties of the device on one HTTP request.
     // Unfortunately HomeKit queries each characteristic separately, so we've build a dedup function
     // It looks if the current job is already in Promise state 'PENDING' (running)
@@ -257,7 +257,7 @@ class MiLightHubPlatform {
     }
   }
 
-  initializeMQTT () {
+  initializeMQTT() {
     var platform = this;
     var mqtt_options = {
       clientId: 'homebridge_milight_hub-' + Math.random().toString(16).substr(2, 8)
@@ -286,21 +286,21 @@ class MiLightHubPlatform {
     }
   }
 
-  subscribeMQTT (milight) {
+  subscribeMQTT(milight) {
     var mqttPath = this.mqttStateTopicPattern.replace(':hex_device_id', '0x' + milight.device_id.toString(16).toUpperCase()).replace(':dec_device_id', milight.device_id).replace(':device_id', milight.device_id).replace(':device_type', milight.remote_type).replace(':group_id', milight.group_id);
     if (!Object.keys(this.mqttClient._resubscribeTopics).includes(mqttPath)) {
       this.mqttClient.subscribe(mqttPath);
     }
   }
 
-  unsubscribeMQTT (milight) {
+  unsubscribeMQTT(milight) {
     var mqttPath = this.mqttStateTopicPattern.replace(':hex_device_id', '0x' + milight.device_id.toString(16).toUpperCase()).replace(':dec_device_id', milight.device_id).replace(':device_id', milight.device_id).replace(':device_type', milight.remote_type).replace(':group_id', milight.group_id);
     if (Object.keys(this.mqttClient._resubscribeTopics).includes(mqttPath)) {
       this.mqttClient.unsubscribe(mqttPath);
     }
   }
 
-  RGBtoHueSaturation (r, g, b) {
+  RGBtoHueSaturation(r, g, b) {
     if (r === 255 && g === 255 && b === 255) {
       return {
         h: 0,
@@ -331,7 +331,7 @@ class MiLightHubPlatform {
     };
   }
 
-  HomeKitColorTemperatureToHueSaturation (ColorTemperature) {
+  HomeKitColorTemperatureToHueSaturation(ColorTemperature) {
     const dKelvin = 10000 / ColorTemperature;
     const rgb = [
       dKelvin > 66 ? 351.97690566805693 + 0.114206453784165 * (dKelvin - 55) - 40.25366309332127 * Math.log(dKelvin - 55) : 255,
@@ -359,7 +359,7 @@ class MiLightHubPlatform {
 }
 
 class MiLight {
-  constructor (platform, accessory) {
+  constructor(platform, accessory) {
     this.platform = platform;
     if (accessory instanceof Accessory) {
       this.accessory = accessory;
@@ -377,12 +377,12 @@ class MiLight {
     this.group_id = this.accessory.context.light_info.group_id;
     this.remote_type = this.accessory.context.light_info.remote_type;
     this.applyCallbacks(this.accessory);
-    this.currentState = { state: false, level: 100, saturation: 0, hue: 0, color_temp: 0, lastMQTTMessage: Buffer.from('') };
+    this.currentState = {state: false, level: 100, saturation: 0, hue: 0, color_temp: 0, lastMQTTMessage: Buffer.from('')};
     this.designatedState = {};
     this.myTimeout = null;
   }
 
-  addServices (accessory) {
+  addServices(accessory) {
     const informationService = accessory.getService(Service.AccessoryInformation);// new Service.AccessoryInformation();
     if (informationService) {
       informationService
@@ -410,7 +410,7 @@ class MiLight {
     accessory.addService(lightbulbService);
   }
 
-  applyCallbacks (accessory) {
+  applyCallbacks(accessory) {
     const lightbulbService = accessory.getService(Service.Lightbulb);
     if (!lightbulbService) {
       this.log('Error: unconfigured accessory without light service found.');
@@ -463,7 +463,7 @@ class MiLight {
     }
   }
 
-  async getState () {
+  async getState() {
     if (!this.platform.mqttClient) {
       var path = '/gateways/' + '0x' + this.device_id.toString(16) + '/' + this.remote_type + '/' + this.group_id;
       var returnValue = JSON.parse(await this.platform.apiCall(path));
@@ -475,14 +475,14 @@ class MiLight {
     }
   }
 
-  changeState () {
+  changeState() {
     if (this.myTimeout) {
       clearTimeout(this.myTimeout);
     }
     this.myTimeout = setTimeout(this.applyDesignatedState.bind(this), this.platform.commandDelay);
   }
 
-  testWhiteMode (hue, saturation) { // Copyright goes to https://gitlab.com/jespertheend/homebridge-milight-esp/-/blob/master/index.js
+  testWhiteMode(hue, saturation) { // Copyright goes to https://gitlab.com/jespertheend/homebridge-milight-esp/-/blob/master/index.js
     if (hue < 150) {
       const fn1 = -70 / (hue - 30) + 2.5;
       const fn2 = -70 / (hue - 33) + 1;
@@ -494,7 +494,7 @@ class MiLight {
     }
   }
 
-  applyDesignatedState () {
+  applyDesignatedState() {
     const dstate = this.designatedState;
     const cstate = this.currentState;
     this.designatedState = {};
@@ -583,65 +583,65 @@ class MiLight {
   }
 
   /** MiLight shiz */
-  async getPowerState (callback) {
+  async getPowerState(callback) {
     this.platform.debugLog(['[getPowerState] GET Request']);
     await this.getState();
     callback(null, this.currentState.state);
   }
 
-  setPowerState (powerOn, callback) {
+  setPowerState(powerOn, callback) {
     this.designatedState.state = powerOn;
     this.platform.debugLog(['[setPowerState] ' + powerOn]);
     this.changeState();
     callback(null);
   }
 
-  async getBrightness (callback) {
+  async getBrightness(callback) {
     this.platform.debugLog(['[getBrightness] GET Request']);
     await this.getState();
     callback(null, this.currentState.level);
   }
 
-  setBrightness (level, callback) {
+  setBrightness(level, callback) {
     this.designatedState.level = level;
     this.platform.debugLog(['[setBrightness] ' + level]);
     this.changeState();
     callback(null);
   }
 
-  async getHue (callback) {
+  async getHue(callback) {
     this.platform.debugLog(['[getHue] GET Request']);
     await this.getState();
     callback(null, this.currentState.hue);
   }
 
-  setHue (value, callback) {
+  setHue(value, callback) {
     this.designatedState.hue = value;
     this.platform.debugLog(['[setHue] ' + value]);
     this.changeState();
     callback(null);
   }
 
-  async getSaturation (callback) {
+  async getSaturation(callback) {
     this.platform.debugLog(['[getSaturation] GET Request']);
     await this.getState();
     callback(null, this.currentState.saturation);
   }
 
-  setSaturation (value, callback) {
+  setSaturation(value, callback) {
     this.designatedState.saturation = value;
     this.platform.debugLog(['[setSaturation] ' + value]);
     this.changeState();
     callback(null);
   }
 
-  async getColorTemperature (callback) {
+  async getColorTemperature(callback) {
     this.platform.debugLog(['[getColorTemperature] GET Request']);
     await this.getState();
     callback(null, this.currentState.color_temp);
   }
 
-  setColorTemperature (value, callback) {
+  setColorTemperature(value, callback) {
     this.designatedState.color_temp = value;
     this.platform.debugLog(['[setColorTemperature] ' + value]);
 
