@@ -1,6 +1,6 @@
 {
   "name": "homebridge-milighthub-platform",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "Homebridge plugin to control Milight lamps with Milight Hub using MQTT or HTTP",
   "main": "index.js",
   "scripts": {
@@ -26,7 +26,7 @@
   },
   "homepage": "https://github.com/normen/homebridge-milighthub-platform#readme",
   "dependencies": {
-    "mqtt": "^3.0.0"
+    "mqtt": "^4.0.0"
   },
   "engines": {
     "homebridge": ">=0.4.50",

@@ -8,6 +8,7 @@ For documentation please see the [README](https://github.com/normen/homebridge-m
 
 - Changed backchannel updating to updateValue instead of using getters (#7)
 - Added displayName to logging
+- Updated dependencies
 
 ## 0.4.1
 
