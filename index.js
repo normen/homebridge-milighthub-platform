@@ -291,7 +291,7 @@ class MiLightHubPlatform {
             milight.currentState.level = returnValue.bulb_mode === 'night' ? 1 : Math.round(returnValue.brightness / 2.55);
             milight.currentState.hue = returnValue.bulb_mode === 'color' ? (platform.RGBtoHueSaturation(returnValue.color.r, returnValue.color.g, returnValue.color.b)).h : (platform.HomeKitColorTemperatureToHueSaturation(returnValue.color_temp)).h;
             milight.currentState.saturation = returnValue.bulb_mode === 'color' ? (platform.RGBtoHueSaturation(returnValue.color.r, returnValue.color.g, returnValue.color.b)).s : (platform.HomeKitColorTemperatureToHueSaturation(returnValue.color_temp)).s;
-            milight.currentState.color_temp = returnValue.bulb_mode === 'color' ? null : returnValue.color_temp;
+            milight.currentState.color_temp = returnValue.bulb_mode === 'color' || returnValue.color_temp === undefined ? milight.currentState.color_temp : returnValue.color_temp;
 
             const lightbulbService = milight.accessory.getService(Service.Lightbulb);
 
@@ -416,14 +416,15 @@ class MiLight {
     this.device_id = this.accessory.context.light_info.device_id;
     this.group_id = this.accessory.context.light_info.group_id;
     this.remote_type = this.accessory.context.light_info.remote_type;
-    this.applyCallbacks(this.accessory);
-    this.currentState = { state: false, level: 100, saturation: 0, hue: 0, color_temp: 0, lastMQTTMessage: Buffer.from('') };
+    this.applyCallbacks(this.accessory, this.platform);
+    this.currentState = { state: false, level: 100, saturation: 0, hue: 0, color_temp: 153, lastMQTTMessage: Buffer.from('') };
     this.designatedState = {};
     this.myTimeout = null;
   }
 
   addServices (accessory) {
-    const informationService = accessory.getService(Service.AccessoryInformation);// new Service.AccessoryInformation();
+    const informationService = accessory.getService(Service.AccessoryInformation); // new Service.AccessoryInformation();
+    this.remote_type = this.accessory.context.light_info.remote_type;
     if (informationService) {
       informationService
         .setCharacteristic(Characteristic.Manufacturer, 'MiLight')
