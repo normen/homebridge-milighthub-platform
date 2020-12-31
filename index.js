@@ -416,7 +416,7 @@ class MiLight {
     this.device_id = this.accessory.context.light_info.device_id;
     this.group_id = this.accessory.context.light_info.group_id;
     this.remote_type = this.accessory.context.light_info.remote_type;
-    this.applyCallbacks(this.accessory, this.platform);
+    this.applyCallbacks(this.accessory);
     this.currentState = { state: false, level: 100, saturation: 0, hue: 0, color_temp: 153, lastMQTTMessage: Buffer.from('') };
     this.designatedState = {};
     this.myTimeout = null;
