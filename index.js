@@ -296,27 +296,27 @@ class MiLightHubPlatform {
             const lightbulbService = milight.accessory.getService(Service.Lightbulb);
 
             if (lightbulbService.getCharacteristic(Characteristic.On) && (lightbulbService.getCharacteristic(Characteristic.On).value !== milight.currentState.state)) {
-              platform.log('Backchannel update for ' + milight.accessory.displayName + ': On is updated from ' + lightbulbService.getCharacteristic(Characteristic.On).value + ' to ' + milight.currentState.state);
+              platform.debugLog('Backchannel update for ' + milight.accessory.displayName + ': On is updated from ' + lightbulbService.getCharacteristic(Characteristic.On).value + ' to ' + milight.currentState.state);
               lightbulbService.getCharacteristic(Characteristic.On)
               .updateValue(milight.currentState.state);
             }
             if (lightbulbService.getCharacteristic(Characteristic.Brightness) && (lightbulbService.getCharacteristic(Characteristic.Brightness).value !== milight.currentState.level)) {
-              platform.log('Backchannel update for ' + milight.accessory.displayName + ': Brightness is updated from ' + lightbulbService.getCharacteristic(Characteristic.Brightness).value + ' to ' + milight.currentState.level);
+              platform.debugLog('Backchannel update for ' + milight.accessory.displayName + ': Brightness is updated from ' + lightbulbService.getCharacteristic(Characteristic.Brightness).value + ' to ' + milight.currentState.level);
               lightbulbService.getCharacteristic(Characteristic.Brightness)
               .updateValue(milight.currentState.level);
             }
             if (lightbulbService.getCharacteristic(Characteristic.Hue) && (lightbulbService.getCharacteristic(Characteristic.Hue).value !== milight.currentState.hue)) {
-              platform.log('Backchannel update for ' + milight.accessory.displayName + ': Hue is updated from ' + lightbulbService.getCharacteristic(Characteristic.Hue).value + ' to ' + milight.currentState.hue);
+              platform.debugLog('Backchannel update for ' + milight.accessory.displayName + ': Hue is updated from ' + lightbulbService.getCharacteristic(Characteristic.Hue).value + ' to ' + milight.currentState.hue);
               lightbulbService.getCharacteristic(Characteristic.Hue)
               .updateValue(milight.currentState.hue);
             }
             if (lightbulbService.getCharacteristic(Characteristic.Saturation) && (lightbulbService.getCharacteristic(Characteristic.Saturation).value !== milight.currentState.saturation)) {
-              platform.log('Backchannel update for ' + milight.accessory.displayName + ': Saturation is updated from ' + lightbulbService.getCharacteristic(Characteristic.Saturation).value + ' to ' + milight.currentState.saturation);
+              platform.debugLog('Backchannel update for ' + milight.accessory.displayName + ': Saturation is updated from ' + lightbulbService.getCharacteristic(Characteristic.Saturation).value + ' to ' + milight.currentState.saturation);
               lightbulbService.getCharacteristic(Characteristic.Saturation)
               .updateValue(milight.currentState.saturation);
             }
             if (platform.rgbcctMode && (lightbulbService.getCharacteristic(Characteristic.ColorTemperature)) && (lightbulbService.getCharacteristic(Characteristic.ColorTemperature).value !== milight.currentState.color_temp)) {
-              platform.log('Backchannel update for ' + milight.accessory.displayName + ': ColorTemperature is updated from ' + lightbulbService.getCharacteristic(Characteristic.ColorTemperature).value + ' to ' + milight.currentState.color_temp);
+              platform.debugLog('Backchannel update for ' + milight.accessory.displayName + ': ColorTemperature is updated from ' + lightbulbService.getCharacteristic(Characteristic.ColorTemperature).value + ' to ' + milight.currentState.color_temp);
               lightbulbService.getCharacteristic(Characteristic.ColorTemperature)
               .updateValue(milight.currentState.color_temp);
             }
