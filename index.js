@@ -44,17 +44,6 @@ class MiLightHubPlatform {
     this.cachedPromises = [];
     this.accessories = [];
 
-    const settings_path = '/settings';
-    this.debugLog('Querying ' + settings_path);
-    this.apiCall(settings_path).then(response => {
-      const settings = JSON.parse(response);
-      if (settings.mqtt_server && !(platform.forceHTTP)) {
-        this.httpCommunication = false;
-      } else {
-        this.httpCommunication = false
-      }
-    });
-
     this.api.on('didFinishLaunching', function () {
       platform.debugLog('DidFinishLaunching');
       platform.getServerLightList();
@@ -202,6 +191,7 @@ class MiLightHubPlatform {
   }
 
   async apiCall (path, json = null) {
+    // TODO: remove dedup in favor of regular updates and comparison to internal currentValues
     // MiLight Hub lets you know all properties of the device on one HTTP request.
     // Unfortunately HomeKit queries each characteristic separately, so we've build a dedup function
     // It looks if the current job is already in Promise state 'PENDING' (running)
@@ -459,51 +449,32 @@ class MiLight {
     }
     if (lightbulbService.getCharacteristic(Characteristic.On)) {
       this.platform.debugLog('Characteristic.On is set');
-      if (this.platform.backchannel && this.platform.httpCommunication) {
-        lightbulbService.getCharacteristic(Characteristic.On)
-          .on('get', this.getPowerState.bind(this));
-      }
       lightbulbService.getCharacteristic(Characteristic.On)
         .on('set', this.setPowerState.bind(this));
     }
     if (lightbulbService.getCharacteristic(Characteristic.Brightness)) {
       this.platform.debugLog('Characteristic.Brightness is set');
-      if (this.platform.backchannel && this.platform.httpCommunication) {
-        lightbulbService.getCharacteristic(Characteristic.Brightness)
-          .on('get', this.getBrightness.bind(this));
-      }
       lightbulbService.getCharacteristic(Characteristic.Brightness)
         .on('set', this.setBrightness.bind(this));
     }
     if (lightbulbService.getCharacteristic(Characteristic.Hue)) {
       this.platform.debugLog('Characteristic.Hue is set');
-      if (this.platform.backchannel && this.platform.httpCommunication) {
-        lightbulbService.getCharacteristic(Characteristic.Hue)
-          .on('get', this.getHue.bind(this));
-      }
       lightbulbService.getCharacteristic(Characteristic.Hue)
         .on('set', this.setHue.bind(this));
     }
     if (lightbulbService.getCharacteristic(Characteristic.Saturation)) {
       this.platform.debugLog('Characteristic.Saturation is set');
-      if (this.platform.backchannel && this.platform.httpCommunication) {
-        lightbulbService.getCharacteristic(Characteristic.Saturation)
-          .on('get', this.getSaturation.bind(this));
-      }
       lightbulbService.getCharacteristic(Characteristic.Saturation)
         .on('set', this.setSaturation.bind(this));
     }
     if (this.platform.rgbcctMode && (lightbulbService.getCharacteristic(Characteristic.ColorTemperature))) {
       this.platform.debugLog('Characteristic.ColorTemperature is set');
-      if (this.platform.backchannel && this.platform.httpCommunication) {
-        lightbulbService.getCharacteristic(Characteristic.ColorTemperature)
-          .on('get', this.getColorTemperature.bind(this));
-      }
       lightbulbService.getCharacteristic(Characteristic.ColorTemperature)
         .on('set', this.setColorTemperature.bind(this));
     }
   }
 
+  // TODO: use to update state...
   async getState () {
     if (!this.platform.mqttClient) {
       var path = '/gateways/' + '0x' + this.device_id.toString(16) + '/' + this.remote_type + '/' + this.group_id;
@@ -624,23 +595,11 @@ class MiLight {
   }
 
   /** MiLight shiz */
-  async getPowerState (callback) {
-    this.platform.debugLog(['[getPowerState] GET Request']);
-    await this.getState();
-    callback(null, this.currentState.state);
-  }
-
   setPowerState (powerOn, callback) {
     this.designatedState.state = powerOn;
     this.platform.debugLog(['[setPowerState] ' + powerOn]);
     this.changeState();
     callback(null);
-  }
-
-  async getBrightness (callback) {
-    this.platform.debugLog(['[getBrightness] GET Request']);
-    await this.getState();
-    callback(null, this.currentState.level);
   }
 
   setBrightness (level, callback) {
@@ -650,12 +609,6 @@ class MiLight {
     callback(null);
   }
 
-  async getHue (callback) {
-    this.platform.debugLog(['[getHue] GET Request']);
-    await this.getState();
-    callback(null, this.currentState.hue);
-  }
-
   setHue (value, callback) {
     this.designatedState.hue = value;
     this.platform.debugLog(['[setHue] ' + value]);
@@ -663,23 +616,11 @@ class MiLight {
     callback(null);
   }
 
-  async getSaturation (callback) {
-    this.platform.debugLog(['[getSaturation] GET Request']);
-    await this.getState();
-    callback(null, this.currentState.saturation);
-  }
-
   setSaturation (value, callback) {
     this.designatedState.saturation = value;
     this.platform.debugLog(['[setSaturation] ' + value]);
     this.changeState();
     callback(null);
-  }
-
-  async getColorTemperature (callback) {
-    this.platform.debugLog(['[getColorTemperature] GET Request']);
-    await this.getState();
-    callback(null, this.currentState.color_temp);
   }
 
   setColorTemperature (value, callback) {

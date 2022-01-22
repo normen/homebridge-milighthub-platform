@@ -4,6 +4,10 @@ This is the change log for the plugin, all relevant changes will be listed here.
 
 For documentation please see the [README](https://github.com/normen/homebridge-milighthub-platform/blob/master/README.md)
 
+## 0.4.3
+
+- Remove getters to avoid homebridge block altogether
+
 ## 0.4.2
 
 - Changed backchannel updating to updateValue instead of using getters (#7)
