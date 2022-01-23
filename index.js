@@ -138,7 +138,7 @@ class MiLightHubPlatform {
     const platform = this;
     // Remove light from HomeKit if it does not exist in MiLight Hub
     this.accessories.forEach((milight, idx) => {
-      var found = false;
+      var valid = false;
       if (lightList.find(lightInfo => (
         milight.group_id === lightInfo.group_id &&
           milight.device_id === lightInfo.device_id &&
@@ -152,11 +152,11 @@ class MiLightHubPlatform {
             // this will run the actual request asynchronously
             platform.getHttpState(milight);
           }
-          found = true;
+          valid = true;
         }
       }
       // remove light if it doesn't exist or has to be reloaded
-      if (!found) {
+      if (!valid) {
         this.log('Removing ' + milight.name + ' from HomeKit');
         this.accessories.splice(idx, 1);
         this.api.unregisterPlatformAccessories('homebridge-milighthub-platform', 'MiLightHubPlatform', [milight.accessory]);
