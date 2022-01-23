@@ -38,6 +38,7 @@ class MiLightHubPlatform {
     // controlling them in RGB mode lets seem the RGB screen to be buggy (orange colors will sometimes change to white_mode)
     // controlling them in RGB+CCT mode lets the color saving / favorite function to malfunction
     this.rgbcctMode = config.rgbcctMode === undefined ? false : this.rgbcctMode = config.rgbcctMode !== false;
+    // TODO: remove in favor of accessory.context
     this.characteristicDetails = '0x2' + ',0x' + (this.rgbcctMode ? 1 : 0).toString();
     this.whiteRemotes = ['cct', 'fut091']; // only Cold white + Warm white remotes
     this.rgbRemotes = ['rgbw', 'rgb', 'fut020']; // only RGB remotes
@@ -128,12 +129,10 @@ class MiLightHubPlatform {
   }
 
   // syncs the light list with the lights reported to HomeKit, i.e. the list of Milight instances
-  // when backchannel is enabled:
-  // - update single lights status via HTTP if no MQTT server is found
-  // - when an MQTT server is found the light subscription status is checked
+  // also updates single lights status via HTTP if no MQTT server is found
   syncLightLists (lightList) {
     const platform = this;
-    // Remove light from HomeKit if it does not exist in MiLight Hub; Otherwise add to MQTT subscription if necessary
+    // Remove light from HomeKit if it does not exist in MiLight Hub
     this.accessories.forEach((milight, idx) => {
       var found = false;
       var characteristicsMatch = true;
@@ -143,13 +142,18 @@ class MiLightHubPlatform {
           milight.remote_type === lightInfo.remote_type &&
           milight.name === lightInfo.name)) !== undefined) {
         found = true;
+        // TODO: move "characteristicDetails" to accessory.context (object thats stored with homekits database)
+        // See Milight constructor for current use, accessory.context.light_info contains the configuration for that light
         if (platform.characteristicDetails !== milight.accessory.getService(Service.AccessoryInformation).getCharacteristic(Characteristic.Model).value) {
           this.debugLog('Characteristics mismatch detected, Removing accessory!');
           characteristicsMatch = false;
         } else if (this.backchannel && !platform.mqttClient) {
+          // if we have a backchannel and use HTTP, send an update request
+          // this will run the actual request asynchronously
           milight.getState();
         }
       }
+      // remove light if it doesn't exist or has to be reloaded
       if (!found || !characteristicsMatch) {
         let removeMessage = 'Removing ' + milight.name + ' from HomeKit because ';
         if (!found) {
@@ -472,6 +476,8 @@ class MiLight {
   //
   // This convoluted beauty of a mess is the central point where the plugin tries
   // to make HomeKits idea work out by creating a command to send to the lamp.
+  // To do so it makes changes to the currentState variable unitl it is the same as the designatedState
+  // while doing so it also adds the appropriate elements to the command which is then sent.
   //
   // Many MiLight plugins had all kinds of hacks and tricks placed all over the code to get this right
   // this plugin tries to keep the insanity to this method. Have fun breaking and fixing stuff here.
@@ -480,10 +486,10 @@ class MiLight {
     const cstate = this.currentState;
     this.designatedState = {};
     const command = {};
-    if (typeof dstate.state !== 'undefined') {
+    if (typeof dstate.state !== 'undefined') { // check if HomeKit actually set an on/off state
       if (dstate.state === true && dstate.level !== 0) {
         command.state = 'On';
-        if (this.platform.darkMode) {
+        if (this.platform.darkMode) { // set cached level in dark mode
           if (typeof dstate.level === 'undefined' && typeof cstate.cachedLevel !== 'undefined' && (dstate.state === true || cstate.state !== false)) {
             dstate.level = cstate.cachedLevel;
           } else if (typeof dstate.level === 'number') {
@@ -498,7 +504,7 @@ class MiLight {
         }
         if (dstate.level > 1) {
           command.level = dstate.level;
-        } else if (dstate.level === 1) {
+        } else if (dstate.level === 1) { // set night mode if level is 1, remove "on" from command
           delete command.state;
           command.commands = ['night_mode'];
         }
