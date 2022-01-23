@@ -4,7 +4,11 @@ This is the change log for the plugin, all relevant changes will be listed here.
 
 For documentation please see the [README](https://github.com/normen/homebridge-milighthub-platform/blob/master/README.md)
 
-## 0.5
+## 0.4.6
+
+- fix MQTT backchannel
+
+## 0.4.5
 
 - all devices need a re-initialization
 

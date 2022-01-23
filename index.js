@@ -146,9 +146,7 @@ class MiLightHubPlatform {
         if (platform.characteristicDetails !== milight.accessory.getService(Service.AccessoryInformation).getCharacteristic(Characteristic.Model).value) {
           this.debugLog('Characteristics mismatch detected, Removing accessory!');
           characteristicsMatch = false;
-        } else if (this.backchannel && platform.mqttClient) {
-          this.subscribeMQTT(milight); // doesn't re-subscribe if exists
-        } else if (this.backchannel) {
+        } else if (this.backchannel && !platform.mqttClient) {
           milight.getState();
         }
       }
@@ -161,9 +159,6 @@ class MiLightHubPlatform {
         }
         this.log(removeMessage);
         this.accessories.splice(idx, 1);
-        if (platform.mqttClient) {
-          this.unsubscribeMQTT(milight);
-        }
         this.api.unregisterPlatformAccessories('homebridge-milighthub-platform', 'MiLightHubPlatform', [milight.accessory]);
       }
     });
@@ -188,15 +183,15 @@ class MiLightHubPlatform {
       var path = this.mqttTopicPattern.replace(':hex_device_id', '0x' + deviceId.toString(16).toUpperCase()).replace(':dec_device_id', deviceId).replace(':device_id', deviceId).replace(':device_type', remoteType).replace(':group_id', groupId);
       const sendBody = JSON.stringify(command);
       try {
+        this.log("MQTT out: " + name + " - " + path + " / " + command);
         this.mqttClient.publish(path, sendBody);
-        this.log("Setting " + name + " - " + path, command);
       } catch (e) {
         this.log(e);
       }
       return true;
     } else {
       var path = '/gateways/' + '0x' + deviceId.toString(16) + '/' + remoteType + '/' + groupId;
-      this.log('SENT: ' + name + " - " + path, command);
+      this.log("HTTP out: " + name + " - " + path + " / " + command);
       this.apiCall(path, command);
     }
   }
@@ -270,7 +265,7 @@ class MiLightHubPlatform {
     }
   }
 
-  // initialize a MQTT connection, only called once per session
+  // initialize a MQTT connection, only called once per session, also registers for callbacks
   initializeMQTT () {
     var platform = this;
     var mqtt_options = {
@@ -281,12 +276,26 @@ class MiLightHubPlatform {
       mqtt_options.password = platform.mqttPass;
     }
     platform.mqttClient = mqtt.connect('mqtt://' + platform.mqttServer, mqtt_options);
-    if (platform.backchannel && platform.mqttClient._events.message === undefined) {
-      platform.debugLog("Registering for MQTT messages");
+    if (platform.backchannel) {
+      // connect callback, registers listener
+      platform.mqttClient.on('connect', function () { // create a listener if no one was created yet
+        platform.debugLog("Connected to MQTT server");
+        if(platform.backchannel) {
+          if(platform.mqttStateTopicPattern == ""){
+            platform.log("No MQTT state topic pattern set in Milight-hub, can't enable backchannel!");
+            return;
+          }
+          var mqttPath = platform.mqttStateTopicPattern.replace(':hex_device_id', '+').replace(':dec_device_id', '+').replace(':device_id', '+').replace(':device_type', '+').replace(':group_id', '+');
+          platform.mqttClient.subscribe(mqttPath);
+          platform.debugLog("Registering for MQTT messages on " + mqttPath);
+        }
+      });
+      // message callback, updates lights
       platform.mqttClient.on('message', function (topic, message) { // create a listener if no one was created yet
         platform.debugLog("MQTT Message: " + topic);
         platform.accessories.forEach(function (milight) {
-          var mqttCurrentLightPath = platform.mqttStateTopicPattern.replace(':hex_device_id', '0x' + milight.device_id.toString(16).toUpperCase()).replace(':dec_device_id', milight.device_id).replace(':device_id', milight.device_id).replace(':device_type', milight.remote_type).replace(':group_id', milight.group_id);
+          let hexId = '0x' + milight.device_id.toString(16).toUpperCase();
+          var mqttCurrentLightPath = platform.mqttStateTopicPattern.replace(':hex_device_id', hexId).replace(':dec_device_id', hexId).replace(':device_id', hexId).replace(':device_type', milight.remote_type).replace(':group_id', milight.group_id);
           if (topic.includes(mqttCurrentLightPath) && Buffer.compare(milight.currentState.lastMQTTMessage, message) !== 0) {
             milight.currentState.lastMQTTMessage = message;
             var returnValue = JSON.parse(message);
@@ -300,24 +309,6 @@ class MiLightHubPlatform {
           }
         });
       });
-    }
-  }
-
-  // subscribe to a milight via MQTT, checks if already subscribed
-  subscribeMQTT (milight) {
-    var mqttPath = this.mqttStateTopicPattern.replace(':hex_device_id', '0x' + milight.device_id.toString(16).toUpperCase()).replace(':dec_device_id', milight.device_id).replace(':device_id', milight.device_id).replace(':device_type', milight.remote_type).replace(':group_id', milight.group_id);
-    if (!Object.keys(this.mqttClient._resubscribeTopics).includes(mqttPath)) {
-      this.debugLog("Subscribed to MQTT path: " + mqttPath);
-      this.mqttClient.subscribe(mqttPath);
-    }
-  }
-
-  // unsubscribe a milight from MQTT, checks if already subscribed
-  unsubscribeMQTT (milight) {
-    var mqttPath = this.mqttStateTopicPattern.replace(':hex_device_id', '0x' + milight.device_id.toString(16).toUpperCase()).replace(':dec_device_id', milight.device_id).replace(':device_id', milight.device_id).replace(':device_type', milight.remote_type).replace(':group_id', milight.group_id);
-    if (Object.keys(this.mqttClient._resubscribeTopics).includes(mqttPath)) {
-      this.debugLog("Subscribed to MQTT path: " + mqttPath);
-      this.mqttClient.unsubscribe(mqttPath);
     }
   }
 }
