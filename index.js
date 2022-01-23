@@ -463,7 +463,7 @@ class MiLight {
     this.currentState.hue = returnValue.bulb_mode === 'color' ? (RGBtoHueSaturation(returnValue.color.r, returnValue.color.g, returnValue.color.b)).h : (HomeKitColorTemperatureToHueSaturation(returnValue.color_temp)).h;
     this.currentState.saturation = returnValue.bulb_mode === 'color' ? (RGBtoHueSaturation(returnValue.color.r, returnValue.color.g, returnValue.color.b)).s : (HomeKitColorTemperatureToHueSaturation(returnValue.color_temp)).s;
     this.currentState.color_temp = returnValue.bulb_mode === 'color' || returnValue.color_temp === undefined ? this.currentState.color_temp : returnValue.color_temp;
-    updateHomekitState();
+    this.updateHomekitState();
   }
   
   // The MiLight object basically stores two states - the "currentState" and the "designatedState"
