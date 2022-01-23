@@ -156,7 +156,7 @@ class MiLightHubPlatform {
         } else if (this.backchannel && !platform.mqttClient) {
           // if we have a backchannel and use HTTP, send an update request
           // this will run the actual request asynchronously
-          milight.getState();
+          platform.getHttpState(milight);
         }
       }
       // remove light if it doesn't exist or has to be reloaded
@@ -271,6 +271,15 @@ class MiLightHubPlatform {
         req.end();
       });
       return this.cachedPromises[path + '_promise'];
+    }
+  }
+
+  // used to update currentState from milight-hub via http
+  async getHttpState(milight) {
+    if (!this.mqttClient) {
+      var path = '/gateways/' + '0x' + milight.device_id.toString(16) + '/' + milight.remote_type + '/' + milight.group_id;
+      var returnValue = JSON.parse(await this.apiCall(path));
+      milight.applyState(returnValue);
     }
   }
 
@@ -443,20 +452,11 @@ class MiLight {
     }
   }
   
-  // used to update currentState from milight-hub via http
-  async getState () {
-    if (!this.platform.mqttClient) {
-      var path = '/gateways/' + '0x' + this.device_id.toString(16) + '/' + this.remote_type + '/' + this.group_id;
-      var returnValue = JSON.parse(await this.platform.apiCall(path));
-      this.applyState(returnValue);
-    }
-  }
-
   // Must be called when the designated state has changed and the lamp state needs to be updated
   // sets a timeout of commandDelay to wait for additional changes coming in
   // HomeKit likes to send each parameter in quick succession so this buffers the input so
   // we get a coherent state to send to the light
-  changeState () {
+  stateChanged () {
     if (this.myTimeout) {
       clearTimeout(this.myTimeout);
     }
@@ -580,35 +580,35 @@ class MiLight {
   setPowerState (powerOn, callback) {
     this.designatedState.state = powerOn;
     this.platform.debugLog(['[setPowerState] ' + powerOn]);
-    this.changeState();
+    this.stateChanged();
     callback(null);
   }
 
   setBrightness (level, callback) {
     this.designatedState.level = level;
     this.platform.debugLog(['[setBrightness] ' + level]);
-    this.changeState();
+    this.stateChanged();
     callback(null);
   }
 
   setHue (value, callback) {
     this.designatedState.hue = value;
     this.platform.debugLog(['[setHue] ' + value]);
-    this.changeState();
+    this.stateChanged();
     callback(null);
   }
 
   setSaturation (value, callback) {
     this.designatedState.saturation = value;
     this.platform.debugLog(['[setSaturation] ' + value]);
-    this.changeState();
+    this.stateChanged();
     callback(null);
   }
 
   setColorTemperature (value, callback) {
     this.designatedState.color_temp = value;
     this.platform.debugLog(['[setColorTemperature] ' + value]);
-    this.changeState();
+    this.stateChanged();
     callback(null);
   }
 }
