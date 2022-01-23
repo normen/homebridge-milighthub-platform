@@ -13,10 +13,11 @@ module.exports = function (homebridge) {
   homebridge.registerPlatform('homebridge-milighthub-platform', 'MiLightHubPlatform', MiLightHubPlatform, true);
 };
 
-// config may be null
-// api may be null if launched from old homebridge version
+// main platform class, manages milight Accessories for one milight hub
 class MiLightHubPlatform {
   constructor (log, config, api) {
+    // config may be null
+    // api may be null if launched from old homebridge version
     if (!config || !api) return;
     var platform = this;
     this.api = api;
@@ -69,6 +70,7 @@ class MiLightHubPlatform {
     callback(null);
   }
 
+  // send debug log message in debug mode only
   debugLog (message) {
     if (!this.debug) {
       return;
@@ -87,6 +89,8 @@ class MiLightHubPlatform {
     }
   }
 
+  // reads server light list and MQTT settings via HTTP
+  // called recurringly, based on syncHubInterval
   getServerLightList () {
     const platform = this;
     const settings_path = '/settings';
@@ -123,6 +127,10 @@ class MiLightHubPlatform {
     });
   }
 
+  // syncs the light list with the lights reported to HomeKit, i.e. the list of Milight instances
+  // when backchannel is enabled:
+  // - update single lights status via HTTP if no MQTT server is found
+  // - when an MQTT server is found the light subscription status is checked
   syncLightLists (lightList) {
     const platform = this;
     // Remove light from HomeKit if it does not exist in MiLight Hub; Otherwise add to MQTT subscription if necessary
@@ -175,6 +183,7 @@ class MiLightHubPlatform {
     });
   }
 
+  // send a command to MilightHub via either HTTP or MQTT
   sendCommand (name, deviceId, remoteType, groupId, command) {
     if (this.mqttClient) {
       var path = this.mqttTopicPattern.replace(':hex_device_id', '0x' + deviceId.toString(16).toUpperCase()).replace(':dec_device_id', deviceId).replace(':device_id', deviceId).replace(':device_type', remoteType).replace(':group_id', groupId);
@@ -193,13 +202,13 @@ class MiLightHubPlatform {
     }
   }
 
+  // API call via HTTP
+  // MiLight Hub lets you know all properties of the device on one HTTP request.
+  // Unfortunately HomeKit queries each characteristic separately, so we've build a dedup function
+  // It looks if the current job is already in Promise state 'PENDING' (running)
+  // If yes return the same promise from cache --> don't start a new one(!)
+  // If no start a promise, cache it and return this
   async apiCall (path, json = null) {
-    // TODO: remove dedup in favor of regular updates and comparison to internal currentValues
-    // MiLight Hub lets you know all properties of the device on one HTTP request.
-    // Unfortunately HomeKit queries each characteristic separately, so we've build a dedup function
-    // It looks if the current job is already in Promise state 'PENDING' (running)
-    // If yes return the same promise from cache --> don't start a new one(!)
-    // If no start a promise, cache it and return this
     if (this.cachedPromises[path] === 'PENDING') {
       this.debugLog('GET (dedup): ' + path);
       return await this.cachedPromises[path + '_promise'];
@@ -262,6 +271,7 @@ class MiLightHubPlatform {
     }
   }
 
+  // initialize a MQTT connection, only called once per session
   initializeMQTT () {
     var platform = this;
     var mqtt_options = {
@@ -294,6 +304,7 @@ class MiLightHubPlatform {
     }
   }
 
+  // subscribe to a milight via MQTT
   subscribeMQTT (milight) {
     var mqttPath = this.mqttStateTopicPattern.replace(':hex_device_id', '0x' + milight.device_id.toString(16).toUpperCase()).replace(':dec_device_id', milight.device_id).replace(':device_id', milight.device_id).replace(':device_type', milight.remote_type).replace(':group_id', milight.group_id);
     if (!Object.keys(this.mqttClient._resubscribeTopics).includes(mqttPath)) {
@@ -302,6 +313,7 @@ class MiLightHubPlatform {
     }
   }
 
+  // unsubscribe a milight from MQTT
   unsubscribeMQTT (milight) {
     var mqttPath = this.mqttStateTopicPattern.replace(':hex_device_id', '0x' + milight.device_id.toString(16).toUpperCase()).replace(':dec_device_id', milight.device_id).replace(':device_id', milight.device_id).replace(':device_type', milight.remote_type).replace(':group_id', milight.group_id);
     if (Object.keys(this.mqttClient._resubscribeTopics).includes(mqttPath)) {
@@ -311,7 +323,11 @@ class MiLightHubPlatform {
   }
 }
 
+// a single light, wraps a Homebridge Accessory
+// and manages the real light state vs homekit state
 class MiLight {
+  // the constructor can be called with a configuration
+  // or with a restored Accessory instance
   constructor (platform, accessory) {
     this.platform = platform;
     if (accessory instanceof Accessory) {
@@ -335,6 +351,8 @@ class MiLight {
     this.myTimeout = null;
   }
 
+  // add our services only to the newly created Accessory,
+  // when homebridge restores the state from cache this already exists
   addServices (accessory) {
     const informationService = accessory.getService(Service.AccessoryInformation); // new Service.AccessoryInformation();
     this.remote_type = this.accessory.context.light_info.remote_type;
@@ -364,6 +382,8 @@ class MiLight {
     accessory.addService(lightbulbService);
   }
 
+  // apply the callbacks for the setters to our instance
+  // this needs to be called on new and restored Accessories
   applyCallbacks (accessory) {
     const lightbulbService = accessory.getService(Service.Lightbulb);
     if (!lightbulbService) {
@@ -397,6 +417,9 @@ class MiLight {
     }
   }
 
+  // syncs the internal "currentState" with HomeKit by sending "updateValue" messages
+  // for values where HomeKit reports a different state
+  // basically the opposite of applyDesignatedState
   updateHomekitState() {
     const lightbulbService = this.accessory.getService(Service.Lightbulb);
     if (lightbulbService.getCharacteristic(Characteristic.On) && (lightbulbService.getCharacteristic(Characteristic.On).value !== this.currentState.state)) {
@@ -426,7 +449,7 @@ class MiLight {
     }
   }
   
-  // used to update state via http
+  // used to update currentState via http
   async getState () {
     if (!this.platform.mqttClient) {
       var path = '/gateways/' + '0x' + this.device_id.toString(16) + '/' + this.remote_type + '/' + this.group_id;
@@ -441,6 +464,10 @@ class MiLight {
     }
   }
 
+  // called when the designated state has changed and the lamp state needs to be updated
+  // sets a timeout of commandDelay to wait for additional changes coming in
+  // when changeState is called again the timeout is reset
+  // when the timeout runs out applydesignatedstate is called
   changeState () {
     if (this.myTimeout) {
       clearTimeout(this.myTimeout);
@@ -448,6 +475,15 @@ class MiLight {
     this.myTimeout = setTimeout(this.applyDesignatedState.bind(this), this.platform.commandDelay);
   }
 
+  // The MiLight object basically stores two states - the "currentState" and the "designatedState"
+  // "currentState" is the plugins best knowledge about the lamps real state.
+  // "designatedState" is what HomeKit wants the plugin to set the state to.
+  //
+  // This convoluted beauty of a mess is the central point where the plugin tries
+  // to make HomeKits idea work out by creating a command to send to the lamp.
+  //
+  // Many MiLight plugins had all kinds of hacks and tricks placed all over the code to get this right
+  // this plugin tries to keep the insanity to the this method. Have fun breaking and fixing stuff here.
   applyDesignatedState () {
     const dstate = this.designatedState;
     const cstate = this.currentState;
@@ -536,7 +572,8 @@ class MiLight {
     this.platform.sendCommand(this.name, this.device_id, this.remote_type, this.group_id, command);
   }
 
-  /** MiLight shiz */
+  // setters for Homebridge, set the designatedState and trigger a re-read
+
   setPowerState (powerOn, callback) {
     this.designatedState.state = powerOn;
     this.platform.debugLog(['[setPowerState] ' + powerOn]);
@@ -568,14 +605,14 @@ class MiLight {
   setColorTemperature (value, callback) {
     this.designatedState.color_temp = value;
     this.platform.debugLog(['[setColorTemperature] ' + value]);
-
     this.changeState();
     callback(null);
   }
 }
 
 
-// HELPERS
+// HELPER FUNCTIONS
+
 function TestWhiteMode(hue, saturation) { // Copyright goes to https://gitlab.com/jespertheend/homebridge-milight-esp/-/blob/master/index.js
   if (hue < 150) {
     const fn1 = -70 / (hue - 30) + 2.5;
