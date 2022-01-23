@@ -143,8 +143,7 @@ class MiLightHubPlatform {
           milight.remote_type === lightInfo.remote_type &&
           milight.name === lightInfo.name)) !== undefined) {
         found = true;
-        // TODO: ill-fated characteristicDetails, only last char is checked now to avoid unwanted switches
-        if (platform.characteristicDetails !== milight.accessory.getService(Service.AccessoryInformation).getCharacteristic(Characteristic.Model)) {
+        if (platform.characteristicDetails !== milight.accessory.getService(Service.AccessoryInformation).getCharacteristic(Characteristic.Model).value) {
           this.debugLog('Characteristics mismatch detected, Removing accessory!');
           characteristicsMatch = false;
         } else if (this.backchannel && platform.mqttClient) {
