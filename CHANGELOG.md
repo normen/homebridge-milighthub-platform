@@ -4,6 +4,12 @@ This is the change log for the plugin, all relevant changes will be listed here.
 
 For documentation please see the [README](https://github.com/normen/homebridge-milighthub-platform/blob/master/README.md)
 
+## 0.4.8
+
+- improve MQTT initialization
+- give hints about MQTT topic patterns
+- README updates
+
 ## 0.4.7
 
 - unify MQTT and HTTP message decoding

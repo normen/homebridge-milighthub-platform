@@ -111,8 +111,14 @@ class MiLightHubPlatform {
             platform.mqttClient = null;
           }
           if (platform.mqttServer && !(platform.forceHTTP)) {
-            platform.log('Using MQTT server at ' + platform.mqttServer);
-            this.initializeMQTT();
+            if(platform.mqttTopicPattern == ""){
+              platform.log("Cannot send MQTT commands, no MQTT topic pattern set in Milight Hub.");
+              platform.log("Set topic pattern to 'milight/:device_id/:device_type/:group_id' in Milight Hub!");
+              platform.log('Using HTTP server at ' + platform.host);
+            } else {
+              platform.log('Using MQTT server at ' + platform.mqttServer);
+              platform.initializeMQTT();
+            }
           } else {
             platform.log('Using HTTP server at ' + platform.host);
           }
@@ -192,7 +198,6 @@ class MiLightHubPlatform {
       } catch (e) {
         this.log(e);
       }
-      return true;
     } else {
       var path = '/gateways/' + '0x' + deviceId.toString(16) + '/' + remoteType + '/' + groupId;
       this.log("HTTP out: " + name + " - " + path + " / " + command);
@@ -269,7 +274,8 @@ class MiLightHubPlatform {
     }
   }
 
-  // initialize a MQTT connection, only called once per session, also registers for callbacks
+  // initialize a MQTT connection, only called once per session
+  // also registers for callbacks if backchannel is set
   initializeMQTT () {
     var platform = this;
     var mqtt_options = {
@@ -284,14 +290,13 @@ class MiLightHubPlatform {
       // connect callback, registers listener
       platform.mqttClient.on('connect', function () { // create a listener if no one was created yet
         platform.debugLog("Connected to MQTT server");
-        if(platform.backchannel) {
-          if(platform.mqttStateTopicPattern == ""){
-            platform.log("No MQTT state topic pattern set in Milight-hub, can't enable backchannel!");
-            return;
-          }
+        if(platform.mqttStateTopicPattern != ""){
           var mqttPath = platform.mqttStateTopicPattern.replace(':hex_device_id', '+').replace(':dec_device_id', '+').replace(':device_id', '+').replace(':device_type', '+').replace(':group_id', '+');
           platform.mqttClient.subscribe(mqttPath);
           platform.debugLog("Registering for MQTT messages on " + mqttPath);
+        } else{
+          platform.log("No MQTT state topic pattern set in MiLight-Hub, can't enable backchannel!");
+          platform.log("Set state topic pattern to 'milight_state/:device_id/:device_type/:group_id' in Milight Hub!");
         }
       });
       // message callback, updates lights
@@ -496,6 +501,7 @@ class MiLight {
             if (cstate.powerOffByBrightness && dstate.level === 100) {
               cstate.powerOffByBrightness = false;
               dstate.level = cstate.cachedLevel;
+              // TODO: why exactly is this here? can this be avoided with updateHomekitState()?
               this.accessory.getService(Service.Lightbulb).getCharacteristic(Characteristic.Brightness).updateValue(dstate.level);
             } else if (cstate.powerOffByBrightness === false) {
               cstate.cachedLevel = cstate.level;
