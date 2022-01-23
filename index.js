@@ -300,12 +300,7 @@ class MiLightHubPlatform {
             milight.currentState.lastMQTTMessage = message;
             var returnValue = JSON.parse(message);
             platform.debugLog(['Parsing MQTT message from ' + topic + ': ', returnValue]);
-            milight.currentState.state = returnValue.state === 'ON' || returnValue.bulb_mode === 'night';
-            milight.currentState.level = returnValue.bulb_mode === 'night' ? 1 : Math.round(returnValue.brightness / 2.55);
-            milight.currentState.hue = returnValue.bulb_mode === 'color' ? (RGBtoHueSaturation(returnValue.color.r, returnValue.color.g, returnValue.color.b)).h : (HomeKitColorTemperatureToHueSaturation(returnValue.color_temp)).h;
-            milight.currentState.saturation = returnValue.bulb_mode === 'color' ? (RGBtoHueSaturation(returnValue.color.r, returnValue.color.g, returnValue.color.b)).s : (HomeKitColorTemperatureToHueSaturation(returnValue.color_temp)).s;
-            milight.currentState.color_temp = returnValue.bulb_mode === 'color' || returnValue.color_temp === undefined ? milight.currentState.color_temp : returnValue.color_temp;
-            milight.updateHomekitState();
+            milight.applyState(returnValue);
           }
         });
       });
@@ -444,13 +439,7 @@ class MiLight {
     if (!this.platform.mqttClient) {
       var path = '/gateways/' + '0x' + this.device_id.toString(16) + '/' + this.remote_type + '/' + this.group_id;
       var returnValue = JSON.parse(await this.platform.apiCall(path));
-      this.currentState.state = returnValue.state === 'ON' || returnValue.bulb_mode === 'night';
-      //check if brightness exists (not available for group lamps)
-      this.currentState.level = returnValue.bulb_mode === 'night' ? 1 : returnValue.brightness ? Math.round(returnValue.brightness / 2.55) : 0; 
-      this.currentState.hue = returnValue.bulb_mode === 'color' ? RGBtoHueSaturation(returnValue.color.r, returnValue.color.g, returnValue.color.b).h : HomeKitColorTemperatureToHueSaturation(returnValue.color_temp).h;
-      this.currentState.saturation = returnValue.bulb_mode === 'color' ? RGBtoHueSaturation(returnValue.color.r, returnValue.color.g, returnValue.color.b).s : HomeKitColorTemperatureToHueSaturation(returnValue.color_temp).s;
-      this.currentState.color_temp = returnValue.bulb_mode === 'color' ? null : returnValue.color_temp;
-      this.updateHomekitState();
+      this.applyState(returnValue);
     }
   }
 
@@ -465,6 +454,18 @@ class MiLight {
     this.myTimeout = setTimeout(this.applyDesignatedState.bind(this), this.platform.commandDelay);
   }
 
+  // apply a received state (via HTTP or MQTT) as the currentState
+  // updates the HomeKit state accordingly
+  applyState(returnValue) {
+    this.currentState.state = returnValue.state === 'ON' || returnValue.bulb_mode === 'night';
+    //check if brightness exists (not available for group lamps)
+    this.currentState.level = returnValue.bulb_mode === 'night' ? 1 : returnValue.brightness ? Math.round(returnValue.brightness / 2.55) : 0; 
+    this.currentState.hue = returnValue.bulb_mode === 'color' ? (RGBtoHueSaturation(returnValue.color.r, returnValue.color.g, returnValue.color.b)).h : (HomeKitColorTemperatureToHueSaturation(returnValue.color_temp)).h;
+    this.currentState.saturation = returnValue.bulb_mode === 'color' ? (RGBtoHueSaturation(returnValue.color.r, returnValue.color.g, returnValue.color.b)).s : (HomeKitColorTemperatureToHueSaturation(returnValue.color_temp)).s;
+    this.currentState.color_temp = returnValue.bulb_mode === 'color' || returnValue.color_temp === undefined ? this.currentState.color_temp : returnValue.color_temp;
+    updateHomekitState();
+  }
+  
   // The MiLight object basically stores two states - the "currentState" and the "designatedState"
   // "currentState" is the plugins best knowledge about the lamps real state.
   // "designatedState" is what HomeKit wants the plugin to set the state to.
