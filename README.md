@@ -36,7 +36,7 @@ Homebridge plugin to control MiLight / EULight lamps through the Open Source [Mi
 
 #### Options
 
-- `host` Hostname of your MiLight Hub, default milight-hub.local`
+- `host` Hostname of your MiLight Hub, default `milight-hub.local`
 - `name` The name of the platform as it appears in the homebridge log, default `MiLightHubPlatform`
 - `httpUsername` If you are using a username:password authentication for your MiLight Hub type in here your credentials, default `null` (disabled)
 - `httpPassword` If you are using a username:password authentication for your MiLight Hub type in here your credentials, default `null` (disabled)
@@ -58,7 +58,11 @@ To add lamps in HomeKit, add aliases to the MiLight Hub. The aliases will automa
 
 #### Using MQTT
 
-If MQTT is configured in the MiLight Hub then the plugin will automatically read those settings and use them to connect to MiLight Hub via MQTT. Make sure your MQTT topic pattern includes the `:device_id`, `:device_type` and `:group_id` values, as in the suggested default value `milight/:device_id/:device_type/:group_id`.
+If MQTT is configured in the MiLight Hub then the plugin will automatically read those settings and use them to connect to MiLight Hub via MQTT.
+
+Make sure your MQTT topic pattern includes the `:device_id`, `:device_type` and `:group_id` values, as in the suggested default value `milight/:device_id/:device_type/:group_id`.
+
+To use the MQTT backchannel make sure your MQTT topic _state pattern_ looks something like `milight_state/:device_id/:device_type/:group_id`.
 
 ## Limitations
 
