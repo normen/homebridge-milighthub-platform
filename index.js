@@ -274,7 +274,7 @@ class MiLightHubPlatform {
     platform.mqttClient = mqtt.connect('mqtt://' + platform.mqttServer, mqtt_options);
     if (platform.backchannel && platform.mqttClient._events.message === undefined) {
       platform.debugLog("Registering for MQTT messages");
-      platform.mqttClient.on('message', function (topic, message, packet) { // create a listener if no one was created yet
+      platform.mqttClient.on('message', function (topic, message) { // create a listener if no one was created yet
         platform.debugLog("MQTT Message: " + topic);
         platform.accessories.forEach(function (milight) {
           var mqttCurrentLightPath = platform.mqttStateTopicPattern.replace(':hex_device_id', '0x' + milight.device_id.toString(16).toUpperCase()).replace(':dec_device_id', milight.device_id).replace(':device_id', milight.device_id).replace(':device_type', milight.remote_type).replace(':group_id', milight.group_id);
@@ -284,8 +284,8 @@ class MiLightHubPlatform {
             platform.debugLog(['Parsing MQTT message from ' + topic + ': ', returnValue]);
             milight.currentState.state = returnValue.state === 'ON' || returnValue.bulb_mode === 'night';
             milight.currentState.level = returnValue.bulb_mode === 'night' ? 1 : Math.round(returnValue.brightness / 2.55);
-            milight.currentState.hue = returnValue.bulb_mode === 'color' ? (platform.RGBtoHueSaturation(returnValue.color.r, returnValue.color.g, returnValue.color.b)).h : (platform.HomeKitColorTemperatureToHueSaturation(returnValue.color_temp)).h;
-            milight.currentState.saturation = returnValue.bulb_mode === 'color' ? (platform.RGBtoHueSaturation(returnValue.color.r, returnValue.color.g, returnValue.color.b)).s : (platform.HomeKitColorTemperatureToHueSaturation(returnValue.color_temp)).s;
+            milight.currentState.hue = returnValue.bulb_mode === 'color' ? (RGBtoHueSaturation(returnValue.color.r, returnValue.color.g, returnValue.color.b)).h : (HomeKitColorTemperatureToHueSaturation(returnValue.color_temp)).h;
+            milight.currentState.saturation = returnValue.bulb_mode === 'color' ? (RGBtoHueSaturation(returnValue.color.r, returnValue.color.g, returnValue.color.b)).s : (HomeKitColorTemperatureToHueSaturation(returnValue.color_temp)).s;
             milight.currentState.color_temp = returnValue.bulb_mode === 'color' || returnValue.color_temp === undefined ? milight.currentState.color_temp : returnValue.color_temp;
             milight.updateHomekitState();
           }
@@ -298,72 +298,16 @@ class MiLightHubPlatform {
     var mqttPath = this.mqttStateTopicPattern.replace(':hex_device_id', '0x' + milight.device_id.toString(16).toUpperCase()).replace(':dec_device_id', milight.device_id).replace(':device_id', milight.device_id).replace(':device_type', milight.remote_type).replace(':group_id', milight.group_id);
     if (!Object.keys(this.mqttClient._resubscribeTopics).includes(mqttPath)) {
       this.debugLog("Subscribed to MQTT path: " + mqttPath);
-      this.mqttClient.subscribe("/"+mqttPath);
+      this.mqttClient.subscribe(mqttPath);
     }
   }
 
   unsubscribeMQTT (milight) {
     var mqttPath = this.mqttStateTopicPattern.replace(':hex_device_id', '0x' + milight.device_id.toString(16).toUpperCase()).replace(':dec_device_id', milight.device_id).replace(':device_id', milight.device_id).replace(':device_type', milight.remote_type).replace(':group_id', milight.group_id);
     if (Object.keys(this.mqttClient._resubscribeTopics).includes(mqttPath)) {
+      this.debugLog("Subscribed to MQTT path: " + mqttPath);
       this.mqttClient.unsubscribe(mqttPath);
     }
-  }
-
-  RGBtoHueSaturation (r, g, b) {
-    if (r === 255 && g === 255 && b === 255) {
-      return {
-        h: 0,
-        s: 0
-      };
-    }
-    var d, h, max, min;
-    r /= 255;
-    g /= 255;
-    b /= 255;
-    max = Math.max(r, g, b);
-    min = Math.min(r, g, b);
-    d = max - min;
-    switch (max) {
-      case r:
-        h = (g - b) / d + (g < b ? 6 : 0);
-        break;
-      case g:
-        h = (b - r) / d + 2;
-        break;
-      case b:
-        h = (r - g) / d + 4;
-    }
-    h /= 6;
-    return {
-      h: Math.round(h * 360),
-      s: Math.round(100 * (max === 0 ? 0 : d / max))
-    };
-  }
-
-  HomeKitColorTemperatureToHueSaturation (ColorTemperature) {
-    const dKelvin = 10000 / ColorTemperature;
-    const rgb = [
-      dKelvin > 66 ? 351.97690566805693 + 0.114206453784165 * (dKelvin - 55) - 40.25366309332127 * Math.log(dKelvin - 55) : 255,
-      dKelvin > 66 ? 325.4494125711974 + 0.07943456536662342 * (dKelvin - 50) - 28.0852963507957 * Math.log(dKelvin - 55) : 104.49216199393888 * Math.log(dKelvin - 2) - 0.44596950469579133 * (dKelvin - 2) - 155.25485562709179,
-      dKelvin > 66 ? 255 : 115.67994401066147 * Math.log(dKelvin - 10) + 0.8274096064007395 * (dKelvin - 10) - 254.76935184120902
-    ].map(v => Math.max(0, Math.min(255, v)) / 255);
-    const max = Math.max(...rgb);
-    const min = Math.min(...rgb);
-    const d = max - min;
-    let h = 0;
-    const s = max ? 100 * d / max : 0;
-    if (d) {
-      switch (max) {
-        case rgb[0]: h = (rgb[1] - rgb[2]) / d + (rgb[1] < rgb[2] ? 6 : 0); break;
-        case rgb[1]: h = (rgb[2] - rgb[0]) / d + 2; break;
-        default: h = (rgb[0] - rgb[1]) / d + 4; break;
-      }
-      h *= 60;
-    }
-    return {
-      h: Math.round(h),
-      s: Math.round(s)
-    };
   }
 }
 
@@ -490,8 +434,8 @@ class MiLight {
       this.currentState.state = returnValue.state === 'ON' || returnValue.bulb_mode === 'night';
       //check if brightness exists (not available for group lamps)
       this.currentState.level = returnValue.bulb_mode === 'night' ? 1 : returnValue.brightness ? Math.round(returnValue.brightness / 2.55) : 0; 
-      this.currentState.hue = returnValue.bulb_mode === 'color' ? this.platform.RGBtoHueSaturation(returnValue.color.r, returnValue.color.g, returnValue.color.b).h : this.platform.HomeKitColorTemperatureToHueSaturation(returnValue.color_temp).h;
-      this.currentState.saturation = returnValue.bulb_mode === 'color' ? this.platform.RGBtoHueSaturation(returnValue.color.r, returnValue.color.g, returnValue.color.b).s : this.platform.HomeKitColorTemperatureToHueSaturation(returnValue.color_temp).s;
+      this.currentState.hue = returnValue.bulb_mode === 'color' ? RGBtoHueSaturation(returnValue.color.r, returnValue.color.g, returnValue.color.b).h : HomeKitColorTemperatureToHueSaturation(returnValue.color_temp).h;
+      this.currentState.saturation = returnValue.bulb_mode === 'color' ? RGBtoHueSaturation(returnValue.color.r, returnValue.color.g, returnValue.color.b).s : HomeKitColorTemperatureToHueSaturation(returnValue.color_temp).s;
       this.currentState.color_temp = returnValue.bulb_mode === 'color' ? null : returnValue.color_temp;
       this.updateHomekitState();
     }
@@ -502,18 +446,6 @@ class MiLight {
       clearTimeout(this.myTimeout);
     }
     this.myTimeout = setTimeout(this.applyDesignatedState.bind(this), this.platform.commandDelay);
-  }
-
-  testWhiteMode (hue, saturation) { // Copyright goes to https://gitlab.com/jespertheend/homebridge-milight-esp/-/blob/master/index.js
-    if (hue < 150) {
-      const fn1 = -70 / (hue - 30) + 2.5;
-      const fn2 = -70 / (hue - 33) + 1;
-      return (saturation < fn1 || hue >= 30) && (saturation > fn2 && hue < 33);
-    } else {
-      const fn3 = 70 / (hue - 219) + 2.7;
-      const fn4 = 90 / (hue - 216) + 0.8;
-      return saturation < fn3 && saturation > fn4;
-    }
   }
 
   applyDesignatedState () {
@@ -580,7 +512,7 @@ class MiLight {
       cstate.hue = dstate.hue;
     }
     if (!this.platform.rgbcctMode) {
-      const useWhiteMode = this.testWhiteMode(dstate.hue, dstate.saturation);
+      const useWhiteMode = TestWhiteMode(dstate.hue, dstate.saturation);
       if (useWhiteMode) {
         delete command.saturation;
         delete command.hue;
@@ -640,4 +572,75 @@ class MiLight {
     this.changeState();
     callback(null);
   }
+}
+
+
+// HELPERS
+function TestWhiteMode(hue, saturation) { // Copyright goes to https://gitlab.com/jespertheend/homebridge-milight-esp/-/blob/master/index.js
+  if (hue < 150) {
+    const fn1 = -70 / (hue - 30) + 2.5;
+    const fn2 = -70 / (hue - 33) + 1;
+    return (saturation < fn1 || hue >= 30) && (saturation > fn2 && hue < 33);
+  } else {
+    const fn3 = 70 / (hue - 219) + 2.7;
+    const fn4 = 90 / (hue - 216) + 0.8;
+    return saturation < fn3 && saturation > fn4;
+  }
+}
+
+function RGBtoHueSaturation(r, g, b) {
+  if (r === 255 && g === 255 && b === 255) {
+    return {
+      h: 0,
+      s: 0
+    };
+  }
+  var d, h, max, min;
+  r /= 255;
+  g /= 255;
+  b /= 255;
+  max = Math.max(r, g, b);
+  min = Math.min(r, g, b);
+  d = max - min;
+  switch (max) {
+    case r:
+      h = (g - b) / d + (g < b ? 6 : 0);
+      break;
+    case g:
+      h = (b - r) / d + 2;
+      break;
+    case b:
+      h = (r - g) / d + 4;
+  }
+  h /= 6;
+  return {
+    h: Math.round(h * 360),
+    s: Math.round(100 * (max === 0 ? 0 : d / max))
+  };
+}
+
+function HomeKitColorTemperatureToHueSaturation(ColorTemperature) {
+  const dKelvin = 10000 / ColorTemperature;
+  const rgb = [
+    dKelvin > 66 ? 351.97690566805693 + 0.114206453784165 * (dKelvin - 55) - 40.25366309332127 * Math.log(dKelvin - 55) : 255,
+    dKelvin > 66 ? 325.4494125711974 + 0.07943456536662342 * (dKelvin - 50) - 28.0852963507957 * Math.log(dKelvin - 55) : 104.49216199393888 * Math.log(dKelvin - 2) - 0.44596950469579133 * (dKelvin - 2) - 155.25485562709179,
+    dKelvin > 66 ? 255 : 115.67994401066147 * Math.log(dKelvin - 10) + 0.8274096064007395 * (dKelvin - 10) - 254.76935184120902
+  ].map(v => Math.max(0, Math.min(255, v)) / 255);
+  const max = Math.max(...rgb);
+  const min = Math.min(...rgb);
+  const d = max - min;
+  let h = 0;
+  const s = max ? 100 * d / max : 0;
+  if (d) {
+    switch (max) {
+      case rgb[0]: h = (rgb[1] - rgb[2]) / d + (rgb[1] < rgb[2] ? 6 : 0); break;
+      case rgb[1]: h = (rgb[2] - rgb[0]) / d + 2; break;
+      default: h = (rgb[0] - rgb[1]) / d + 4; break;
+    }
+    h *= 60;
+  }
+  return {
+    h: Math.round(h),
+    s: Math.round(s)
+  };
 }
