@@ -60,9 +60,9 @@ To add lamps in HomeKit, add aliases to the MiLight Hub. The aliases will automa
 
 If MQTT is configured in the MiLight Hub then the plugin will automatically read those settings and use them to connect to MiLight Hub via MQTT.
 
-Make sure your MQTT topic pattern includes the `:device_id`, `:device_type` and `:group_id` values, as in the suggested default value `milight/:device_id/:device_type/:group_id`.
+Make sure your MQTT _topic pattern_ includes the `:device_id`, `:device_type` and `:group_id` values, e.g. `milight/:device_id/:device_type/:group_id`.
 
-To use the MQTT backchannel make sure your MQTT topic _state pattern_ looks something like `milight_state/:device_id/:device_type/:group_id`.
+To use the MQTT backchannel set MQTT topic _state pattern_ to e.g. `milight_state/:device_id/:device_type/:group_id`.
 
 ## Limitations
 
