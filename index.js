@@ -136,43 +136,43 @@ class MiLightHubPlatform {
   // also updates single lights status via HTTP if no MQTT server is found
   syncLightLists (lightList) {
     const platform = this;
-    // Remove light from HomeKit if it does not exist in MiLight Hub
+    var removals = [];
+    // Check if light is in homekit and has correct settings
     this.accessories.forEach((milight, idx) => {
-      var valid = false;
       if (lightList.find(lightInfo => (
-        milight.group_id === lightInfo.group_id &&
+          milight.group_id === lightInfo.group_id &&
           milight.device_id === lightInfo.device_id &&
           milight.remote_type === lightInfo.remote_type &&
-          milight.name === lightInfo.name)) !== undefined) {
-        // found the light in the list, check if the characteristsics match
-        if (platform.rgbcctMode != milight.accessory.context.rgbcctMode) {
-          this.log('Characteristics mismatch detected for ' + milight.name);
-        } else {  // update HTTP backchannel
-          if (this.backchannel && !platform.mqttClient) {
-            // this will run the actual request asynchronously
-            platform.getHttpState(milight);
-          }
-          valid = true;
+          milight.name === lightInfo.name &&
+          milight.accessory.context.rgbcctMode == platform.rgbcctMode)) !== undefined) {
+        // this will run the actual request asynchronously
+        if (this.backchannel && !platform.mqttClient) {
+          platform.getHttpState(milight);
         }
+      } else{
+        removals.push(idx);
       }
-      // remove light if it doesn't exist or has to be reloaded
-      if (!valid) {
-        this.log('Removing ' + milight.name + ' from HomeKit');
-        this.accessories.splice(idx, 1);
-        this.api.unregisterPlatformAccessories('homebridge-milighthub-platform', 'MiLightHubPlatform', [milight.accessory]);
-      }
+    });
+    var removed = 0;
+    // remove all found lights that don't match any light in milight hub
+    removals.forEach(idx => {
+      var milight = platform.accessories[idx-removed];
+      platform.log('Removing ' + milight.name + ' from HomeKit');
+      platform.api.unregisterPlatformAccessories('homebridge-milighthub-platform', 'MiLightHubPlatform', [milight.accessory]);
+      platform.accessories.splice(idx-removed, 1);
+      removed++;
     });
     // Add new lights to HomeKit
     lightList.forEach(lightInfo => {
-      if (this.accessories.find(milight => (
+      if (platform.accessories.find(milight => (
         milight.group_id === lightInfo.group_id &&
           milight.device_id === lightInfo.device_id &&
           milight.remote_type === lightInfo.remote_type &&
           milight.name === lightInfo.name)) === undefined) {
-        this.log('Adding ' + lightInfo.name + ' to HomeKit');
+        platform.log('Adding ' + lightInfo.name + ' to HomeKit');
         const milight = new MiLight(platform, lightInfo);
-        this.accessories.push(milight);
-        this.api.registerPlatformAccessories('homebridge-milighthub-platform', 'MiLightHubPlatform', [milight.accessory]);
+        platform.accessories.push(milight);
+        platform.api.registerPlatformAccessories('homebridge-milighthub-platform', 'MiLightHubPlatform', [milight.accessory]);
       }
     });
   }
@@ -264,7 +264,7 @@ class MiLightHubPlatform {
     }
   }
 
-  // used to update currentState from milight-hub via http
+  // used to update currentState of a Milight object from milight-hub via http
   async getHttpState(milight) {
     if (!this.mqttClient) {
       var path = '/gateways/' + '0x' + milight.device_id.toString(16) + '/' + milight.remote_type + '/' + milight.group_id;
