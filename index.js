@@ -37,7 +37,7 @@ class MiLightHubPlatform {
     // controlling them in RGB mode lets seem the RGB screen to be buggy (orange colors will sometimes change to white_mode)
     // controlling them in RGB+CCT mode lets the color saving / favorite function to malfunction
     this.rgbcctMode = config.rgbcctMode === undefined ? false : this.rgbcctMode = config.rgbcctMode !== false;
-    this.characteristicDetails = '0x' + (this.backchannel ? 1 : 0).toString() + ',0x' + (this.rgbcctMode ? 1 : 0).toString();
+    this.characteristicDetails = '0x0'+ ',0x' + (this.rgbcctMode ? 1 : 0).toString();
     this.whiteRemotes = ['cct', 'fut091']; // only Cold white + Warm white remotes
     this.rgbRemotes = ['rgbw', 'rgb', 'fut020']; // only RGB remotes
     this.rgbcctRemotes = ['fut089', 'rgb_cct']; // RGB + Cold white + Warm white remotes
@@ -135,11 +135,14 @@ class MiLightHubPlatform {
           milight.remote_type === lightInfo.remote_type &&
           milight.name === lightInfo.name)) !== undefined) {
         found = true;
-        if (platform.characteristicDetails !== milight.accessory.getService(Service.AccessoryInformation).getCharacteristic(Characteristic.Model).value) {
+        // TODO: ill-fated characteristicDetails, only last char is checked now to avoid unwanted switches
+        if (platform.characteristicDetails.slice(-1) !== milight.accessory.getService(Service.AccessoryInformation).getCharacteristic(Characteristic.Model).value.slice(-1)) {
           this.debugLog('Characteristics mismatch detected, Removing accessory!');
           characteristicsMatch = false;
         } else if (this.backchannel && platform.mqttClient) {
           this.subscribeMQTT(milight); // doesn't re-subscribe if exists
+        } else if (this.backchannel) {
+          milight.getState();
         }
       }
       if (!found || !characteristicsMatch) {
@@ -270,7 +273,9 @@ class MiLightHubPlatform {
     }
     platform.mqttClient = mqtt.connect('mqtt://' + platform.mqttServer, mqtt_options);
     if (platform.backchannel && platform.mqttClient._events.message === undefined) {
+      platform.debugLog("Registering for MQTT messages");
       platform.mqttClient.on('message', function (topic, message, packet) { // create a listener if no one was created yet
+        platform.debugLog("MQTT Message: " + topic);
         platform.accessories.forEach(function (milight) {
           var mqttCurrentLightPath = platform.mqttStateTopicPattern.replace(':hex_device_id', '0x' + milight.device_id.toString(16).toUpperCase()).replace(':dec_device_id', milight.device_id).replace(':device_id', milight.device_id).replace(':device_type', milight.remote_type).replace(':group_id', milight.group_id);
           if (topic.includes(mqttCurrentLightPath) && Buffer.compare(milight.currentState.lastMQTTMessage, message) !== 0) {
@@ -282,34 +287,7 @@ class MiLightHubPlatform {
             milight.currentState.hue = returnValue.bulb_mode === 'color' ? (platform.RGBtoHueSaturation(returnValue.color.r, returnValue.color.g, returnValue.color.b)).h : (platform.HomeKitColorTemperatureToHueSaturation(returnValue.color_temp)).h;
             milight.currentState.saturation = returnValue.bulb_mode === 'color' ? (platform.RGBtoHueSaturation(returnValue.color.r, returnValue.color.g, returnValue.color.b)).s : (platform.HomeKitColorTemperatureToHueSaturation(returnValue.color_temp)).s;
             milight.currentState.color_temp = returnValue.bulb_mode === 'color' || returnValue.color_temp === undefined ? milight.currentState.color_temp : returnValue.color_temp;
-
-            const lightbulbService = milight.accessory.getService(Service.Lightbulb);
-
-            if (lightbulbService.getCharacteristic(Characteristic.On) && (lightbulbService.getCharacteristic(Characteristic.On).value !== milight.currentState.state)) {
-              platform.debugLog('Backchannel update for ' + milight.accessory.displayName + ': On is updated from ' + lightbulbService.getCharacteristic(Characteristic.On).value + ' to ' + milight.currentState.state);
-              lightbulbService.getCharacteristic(Characteristic.On)
-              .updateValue(milight.currentState.state);
-            }
-            if (lightbulbService.getCharacteristic(Characteristic.Brightness) && (lightbulbService.getCharacteristic(Characteristic.Brightness).value !== milight.currentState.level)) {
-              platform.debugLog('Backchannel update for ' + milight.accessory.displayName + ': Brightness is updated from ' + lightbulbService.getCharacteristic(Characteristic.Brightness).value + ' to ' + milight.currentState.level);
-              lightbulbService.getCharacteristic(Characteristic.Brightness)
-              .updateValue(milight.currentState.level);
-            }
-            if (lightbulbService.getCharacteristic(Characteristic.Hue) && (lightbulbService.getCharacteristic(Characteristic.Hue).value !== milight.currentState.hue)) {
-              platform.debugLog('Backchannel update for ' + milight.accessory.displayName + ': Hue is updated from ' + lightbulbService.getCharacteristic(Characteristic.Hue).value + ' to ' + milight.currentState.hue);
-              lightbulbService.getCharacteristic(Characteristic.Hue)
-              .updateValue(milight.currentState.hue);
-            }
-            if (lightbulbService.getCharacteristic(Characteristic.Saturation) && (lightbulbService.getCharacteristic(Characteristic.Saturation).value !== milight.currentState.saturation)) {
-              platform.debugLog('Backchannel update for ' + milight.accessory.displayName + ': Saturation is updated from ' + lightbulbService.getCharacteristic(Characteristic.Saturation).value + ' to ' + milight.currentState.saturation);
-              lightbulbService.getCharacteristic(Characteristic.Saturation)
-              .updateValue(milight.currentState.saturation);
-            }
-            if (platform.rgbcctMode && (lightbulbService.getCharacteristic(Characteristic.ColorTemperature)) && (lightbulbService.getCharacteristic(Characteristic.ColorTemperature).value !== milight.currentState.color_temp)) {
-              platform.debugLog('Backchannel update for ' + milight.accessory.displayName + ': ColorTemperature is updated from ' + lightbulbService.getCharacteristic(Characteristic.ColorTemperature).value + ' to ' + milight.currentState.color_temp);
-              lightbulbService.getCharacteristic(Characteristic.ColorTemperature)
-              .updateValue(milight.currentState.color_temp);
-            }
+            milight.updateHomekitState();
           }
         });
       });
@@ -319,7 +297,8 @@ class MiLightHubPlatform {
   subscribeMQTT (milight) {
     var mqttPath = this.mqttStateTopicPattern.replace(':hex_device_id', '0x' + milight.device_id.toString(16).toUpperCase()).replace(':dec_device_id', milight.device_id).replace(':device_id', milight.device_id).replace(':device_type', milight.remote_type).replace(':group_id', milight.group_id);
     if (!Object.keys(this.mqttClient._resubscribeTopics).includes(mqttPath)) {
-      this.mqttClient.subscribe(mqttPath);
+      this.debugLog("Subscribed to MQTT path: " + mqttPath);
+      this.mqttClient.subscribe("/"+mqttPath);
     }
   }
 
@@ -474,16 +453,47 @@ class MiLight {
     }
   }
 
-  // TODO: use to update state...
+  updateHomekitState() {
+    const lightbulbService = this.accessory.getService(Service.Lightbulb);
+    if (lightbulbService.getCharacteristic(Characteristic.On) && (lightbulbService.getCharacteristic(Characteristic.On).value !== this.currentState.state)) {
+      this.platform.debugLog('Backchannel update for ' + this.accessory.displayName + ': On is updated from ' + lightbulbService.getCharacteristic(Characteristic.On).value + ' to ' + this.currentState.state);
+      lightbulbService.getCharacteristic(Characteristic.On)
+        .updateValue(this.currentState.state);
+    }
+    if (lightbulbService.getCharacteristic(Characteristic.Brightness) && (lightbulbService.getCharacteristic(Characteristic.Brightness).value !== this.currentState.level)) {
+      this.platform.debugLog('Backchannel update for ' + this.accessory.displayName + ': Brightness is updated from ' + lightbulbService.getCharacteristic(Characteristic.Brightness).value + ' to ' + this.currentState.level);
+      lightbulbService.getCharacteristic(Characteristic.Brightness)
+        .updateValue(this.currentState.level);
+    }
+    if (lightbulbService.getCharacteristic(Characteristic.Hue) && (lightbulbService.getCharacteristic(Characteristic.Hue).value !== this.currentState.hue)) {
+      this.platform.debugLog('Backchannel update for ' + this.accessory.displayName + ': Hue is updated from ' + lightbulbService.getCharacteristic(Characteristic.Hue).value + ' to ' + this.currentState.hue);
+      lightbulbService.getCharacteristic(Characteristic.Hue)
+        .updateValue(this.currentState.hue);
+    }
+    if (lightbulbService.getCharacteristic(Characteristic.Saturation) && (lightbulbService.getCharacteristic(Characteristic.Saturation).value !== this.currentState.saturation)) {
+      this.platform.debugLog('Backchannel update for ' + this.accessory.displayName + ': Saturation is updated from ' + lightbulbService.getCharacteristic(Characteristic.Saturation).value + ' to ' + this.currentState.saturation);
+      lightbulbService.getCharacteristic(Characteristic.Saturation)
+        .updateValue(this.currentState.saturation);
+    }
+    if (this.platform.rgbcctMode && (lightbulbService.getCharacteristic(Characteristic.ColorTemperature)) && (lightbulbService.getCharacteristic(Characteristic.ColorTemperature).value !== this.currentState.color_temp)) {
+      this.platform.debugLog('Backchannel update for ' + this.accessory.displayName + ': ColorTemperature is updated from ' + lightbulbService.getCharacteristic(Characteristic.ColorTemperature).value + ' to ' + this.currentState.color_temp);
+      lightbulbService.getCharacteristic(Characteristic.ColorTemperature)
+        .updateValue(this.currentState.color_temp);
+    }
+  }
+  
+  // used to update state via http
   async getState () {
     if (!this.platform.mqttClient) {
       var path = '/gateways/' + '0x' + this.device_id.toString(16) + '/' + this.remote_type + '/' + this.group_id;
       var returnValue = JSON.parse(await this.platform.apiCall(path));
       this.currentState.state = returnValue.state === 'ON' || returnValue.bulb_mode === 'night';
-      this.currentState.level = returnValue.bulb_mode === 'night' ? 1 : Math.round(returnValue.brightness / 2.55);
+      //check if brightness exists (not available for group lamps)
+      this.currentState.level = returnValue.bulb_mode === 'night' ? 1 : returnValue.brightness ? Math.round(returnValue.brightness / 2.55) : 0; 
       this.currentState.hue = returnValue.bulb_mode === 'color' ? this.platform.RGBtoHueSaturation(returnValue.color.r, returnValue.color.g, returnValue.color.b).h : this.platform.HomeKitColorTemperatureToHueSaturation(returnValue.color_temp).h;
       this.currentState.saturation = returnValue.bulb_mode === 'color' ? this.platform.RGBtoHueSaturation(returnValue.color.r, returnValue.color.g, returnValue.color.b).s : this.platform.HomeKitColorTemperatureToHueSaturation(returnValue.color_temp).s;
       this.currentState.color_temp = returnValue.bulb_mode === 'color' ? null : returnValue.color_temp;
+      this.updateHomekitState();
     }
   }
 
