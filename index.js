@@ -202,7 +202,7 @@ class MiLightHubPlatform {
     }
   }
 
-  // API call via HTTP
+  // Milight-Hub API call via HTTP
   // MiLight Hub lets you know all properties of the device on one HTTP request.
   // Unfortunately HomeKit queries each characteristic separately, so we've build a dedup function
   // It looks if the current job is already in Promise state 'PENDING' (running)
@@ -304,7 +304,7 @@ class MiLightHubPlatform {
     }
   }
 
-  // subscribe to a milight via MQTT
+  // subscribe to a milight via MQTT, checks if already subscribed
   subscribeMQTT (milight) {
     var mqttPath = this.mqttStateTopicPattern.replace(':hex_device_id', '0x' + milight.device_id.toString(16).toUpperCase()).replace(':dec_device_id', milight.device_id).replace(':device_id', milight.device_id).replace(':device_type', milight.remote_type).replace(':group_id', milight.group_id);
     if (!Object.keys(this.mqttClient._resubscribeTopics).includes(mqttPath)) {
@@ -313,7 +313,7 @@ class MiLightHubPlatform {
     }
   }
 
-  // unsubscribe a milight from MQTT
+  // unsubscribe a milight from MQTT, checks if already subscribed
   unsubscribeMQTT (milight) {
     var mqttPath = this.mqttStateTopicPattern.replace(':hex_device_id', '0x' + milight.device_id.toString(16).toUpperCase()).replace(':dec_device_id', milight.device_id).replace(':device_id', milight.device_id).replace(':device_type', milight.remote_type).replace(':group_id', milight.group_id);
     if (Object.keys(this.mqttClient._resubscribeTopics).includes(mqttPath)) {
@@ -382,7 +382,7 @@ class MiLight {
     accessory.addService(lightbulbService);
   }
 
-  // apply the callbacks for the setters to our instance
+  // apply the callbacks for the homebridge-setters to our Milight object instance
   // this needs to be called on new and restored Accessories
   applyCallbacks (accessory) {
     const lightbulbService = accessory.getService(Service.Lightbulb);
@@ -417,7 +417,7 @@ class MiLight {
     }
   }
 
-  // syncs the internal "currentState" with HomeKit by sending "updateValue" messages
+  // syncs HomeKit with the internal "currentState" by sending "updateValue" messages
   // for values where HomeKit reports a different state
   // basically the opposite of applyDesignatedState
   updateHomekitState() {
@@ -449,7 +449,7 @@ class MiLight {
     }
   }
   
-  // used to update currentState via http
+  // used to update currentState from milight-hub via http
   async getState () {
     if (!this.platform.mqttClient) {
       var path = '/gateways/' + '0x' + this.device_id.toString(16) + '/' + this.remote_type + '/' + this.group_id;
@@ -464,10 +464,10 @@ class MiLight {
     }
   }
 
-  // called when the designated state has changed and the lamp state needs to be updated
+  // Must be called when the designated state has changed and the lamp state needs to be updated
   // sets a timeout of commandDelay to wait for additional changes coming in
-  // when changeState is called again the timeout is reset
-  // when the timeout runs out applydesignatedstate is called
+  // HomeKit likes to send each parameter in quick succession so this buffers the input so
+  // we get a coherent state to send to the light
   changeState () {
     if (this.myTimeout) {
       clearTimeout(this.myTimeout);
@@ -483,7 +483,7 @@ class MiLight {
   // to make HomeKits idea work out by creating a command to send to the lamp.
   //
   // Many MiLight plugins had all kinds of hacks and tricks placed all over the code to get this right
-  // this plugin tries to keep the insanity to the this method. Have fun breaking and fixing stuff here.
+  // this plugin tries to keep the insanity to this method. Have fun breaking and fixing stuff here.
   applyDesignatedState () {
     const dstate = this.designatedState;
     const cstate = this.currentState;
@@ -572,7 +572,7 @@ class MiLight {
     this.platform.sendCommand(this.name, this.device_id, this.remote_type, this.group_id, command);
   }
 
-  // setters for Homebridge, set the designatedState and trigger a re-read
+  // setters for Homebridge, set the designatedState and trigger a changeState
 
   setPowerState (powerOn, callback) {
     this.designatedState.state = powerOn;
