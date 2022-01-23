@@ -193,14 +193,14 @@ class MiLightHubPlatform {
       var path = this.mqttTopicPattern.replace(':hex_device_id', '0x' + deviceId.toString(16).toUpperCase()).replace(':dec_device_id', deviceId).replace(':device_id', deviceId).replace(':device_type', remoteType).replace(':group_id', groupId);
       const sendBody = JSON.stringify(command);
       try {
-        this.log("MQTT out: " + name + " - " + path + " / " + command);
+        this.log("MQTT out: " + name + " - " + path, command);
         this.mqttClient.publish(path, sendBody);
       } catch (e) {
         this.log(e);
       }
     } else {
       var path = '/gateways/' + '0x' + deviceId.toString(16) + '/' + remoteType + '/' + groupId;
-      this.log("HTTP out: " + name + " - " + path + " / " + command);
+      this.log("HTTP out: " + name + " - " + path, command);
       this.apiCall(path, command);
     }
   }
