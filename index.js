@@ -37,9 +37,7 @@ class MiLightHubPlatform {
     // but let the user choose because the RGB+CCT lamps do have seperate LEDs for the white temperatures and seperate for the RGB colors
     // controlling them in RGB mode lets seem the RGB screen to be buggy (orange colors will sometimes change to white_mode)
     // controlling them in RGB+CCT mode lets the color saving / favorite function to malfunction
-    this.rgbcctMode = config.rgbcctMode === undefined ? false : this.rgbcctMode = config.rgbcctMode !== false;
-    // TODO: remove in favor of accessory.context
-    this.characteristicDetails = '0x2' + ',0x' + (this.rgbcctMode ? 1 : 0).toString();
+    this.rgbcctMode = config.rgbcctMode === undefined ? false : config.rgbcctMode;
     this.whiteRemotes = ['cct', 'fut091']; // only Cold white + Warm white remotes
     this.rgbRemotes = ['rgbw', 'rgb', 'fut020']; // only RGB remotes
     this.rgbcctRemotes = ['fut089', 'rgb_cct']; // RGB + Cold white + Warm white remotes
@@ -141,33 +139,25 @@ class MiLightHubPlatform {
     // Remove light from HomeKit if it does not exist in MiLight Hub
     this.accessories.forEach((milight, idx) => {
       var found = false;
-      var characteristicsMatch = true;
       if (lightList.find(lightInfo => (
         milight.group_id === lightInfo.group_id &&
           milight.device_id === lightInfo.device_id &&
           milight.remote_type === lightInfo.remote_type &&
           milight.name === lightInfo.name)) !== undefined) {
-        found = true;
-        // TODO: move "characteristicDetails" to accessory.context (object thats stored with homekits database)
-        // See Milight constructor for current use, accessory.context.light_info contains the configuration for that light
-        if (platform.characteristicDetails !== milight.accessory.getService(Service.AccessoryInformation).getCharacteristic(Characteristic.Model).value) {
-          this.debugLog('Characteristics mismatch detected, Removing accessory!');
-          characteristicsMatch = false;
-        } else if (this.backchannel && !platform.mqttClient) {
-          // if we have a backchannel and use HTTP, send an update request
-          // this will run the actual request asynchronously
-          platform.getHttpState(milight);
+        // found the light in the list, check if the characteristsics match
+        if (platform.rgbcctMode != milight.accessory.context.rgbcctMode) {
+          this.log('Characteristics mismatch detected for ' + milight.name);
+        } else {  // update HTTP backchannel
+          if (this.backchannel && !platform.mqttClient) {
+            // this will run the actual request asynchronously
+            platform.getHttpState(milight);
+          }
+          found = true;
         }
       }
       // remove light if it doesn't exist or has to be reloaded
-      if (!found || !characteristicsMatch) {
-        let removeMessage = 'Removing ' + milight.name + ' from HomeKit because ';
-        if (!found) {
-          removeMessage += 'it could not be found in MiLight Hub';
-        } else {
-          removeMessage += 'a characteristics mismatch was detected';
-        }
-        this.log(removeMessage);
+      if (!found) {
+        this.log('Removing ' + milight.name + ' from HomeKit');
         this.accessories.splice(idx, 1);
         this.api.unregisterPlatformAccessories('homebridge-milighthub-platform', 'MiLightHubPlatform', [milight.accessory]);
       }
@@ -341,6 +331,7 @@ class MiLight {
       this.platform.log('Creating new accessory for ' + accessory.name + ' [' + uuid + ']');
       this.accessory = new Accessory(accessory.name, uuid);
       this.accessory.context.light_info = accessory;
+      this.accessory.context.rgbcctMode = this.platform.rgbcctMode;
       this.addServices(this.accessory);
     }
     // read context info
@@ -362,8 +353,8 @@ class MiLight {
     if (informationService) {
       informationService
         .setCharacteristic(Characteristic.Manufacturer, 'MiLight')
-        .setCharacteristic(Characteristic.Model, this.platform.characteristicDetails)
-        .setCharacteristic(Characteristic.SerialNumber, accessory.context.light_info.uid)
+        .setCharacteristic(Characteristic.Model, accessory.context.light_info.remote_type)
+        .setCharacteristic(Characteristic.SerialNumber, accessory.context.light_info.group_id + '/' + accessory.context.light_info.device_id)
         .setCharacteristic(Characteristic.FirmwareRevision, packageJSON.version);
     } else {
       this.log('Error: No information service found');
