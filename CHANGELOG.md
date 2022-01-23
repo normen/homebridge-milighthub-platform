@@ -4,6 +4,10 @@ This is the change log for the plugin, all relevant changes will be listed here.
 
 For documentation please see the [README](https://github.com/normen/homebridge-milighthub-platform/blob/master/README.md)
 
+## 0.4.10
+
+- fix lags when re-loading changed lights
+
 ## 0.4.9
 
 - fix logging regression
