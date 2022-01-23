@@ -40,7 +40,7 @@ Homebridge plugin to control MiLight / EULight lamps through the Open Source [Mi
 - `name` The name of the platform as it appears in the homebridge log, default `MiLightHubPlatform`
 - `httpUsername` If you are using a username:password authentication for your MiLight Hub type in here your credentials, default `null` (disabled)
 - `httpPassword` If you are using a username:password authentication for your MiLight Hub type in here your credentials, default `null` (disabled)
-- `backchannel` Enables/Disables backchannel, currently limited to http only, default `false` (disabled)
+- `backchannel` Enables/Disables backchannel, default `false` (disabled)
 - `darkMode` Enables/Disables setting a low brightness value to mitigate the bright flashing of the lights if you turn them on with a low brightness & caches the last value before power off, default `false` (disabled)
 --- see limitations
 - `rgbcctMode` Enables ColorTemperature characteristic which is unsupported by HomeKit in combination with RGB characteristics but gives you a more accurate control of your lights at the expense of not supporting favourite colors in Home App anymore, default `false` (disabled)
