@@ -38,7 +38,7 @@ class MiLightHubPlatform {
     // controlling them in RGB mode lets seem the RGB screen to be buggy (orange colors will sometimes change to white_mode)
     // controlling them in RGB+CCT mode lets the color saving / favorite function to malfunction
     this.rgbcctMode = config.rgbcctMode === undefined ? false : this.rgbcctMode = config.rgbcctMode !== false;
-    this.characteristicDetails = '0x0'+ ',0x' + (this.rgbcctMode ? 1 : 0).toString();
+    this.characteristicDetails = '0x2' + ',0x' + (this.rgbcctMode ? 1 : 0).toString();
     this.whiteRemotes = ['cct', 'fut091']; // only Cold white + Warm white remotes
     this.rgbRemotes = ['rgbw', 'rgb', 'fut020']; // only RGB remotes
     this.rgbcctRemotes = ['fut089', 'rgb_cct']; // RGB + Cold white + Warm white remotes
@@ -144,7 +144,7 @@ class MiLightHubPlatform {
           milight.name === lightInfo.name)) !== undefined) {
         found = true;
         // TODO: ill-fated characteristicDetails, only last char is checked now to avoid unwanted switches
-        if (platform.characteristicDetails.slice(-1) !== milight.accessory.getService(Service.AccessoryInformation).getCharacteristic(Characteristic.Model).value.slice(-1)) {
+        if (platform.characteristicDetails !== milight.accessory.getService(Service.AccessoryInformation).getCharacteristic(Characteristic.Model)) {
           this.debugLog('Characteristics mismatch detected, Removing accessory!');
           characteristicsMatch = false;
         } else if (this.backchannel && platform.mqttClient) {
