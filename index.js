@@ -368,6 +368,7 @@ class MiLight {
     if (this.platform.whiteRemotes.includes(this.remote_type) || (this.platform.rgbcctMode && this.platform.rgbcctRemotes.includes(this.remote_type))) {
       lightbulbService
         .addCharacteristic(new Characteristic.ColorTemperature())
+        .updateValue(370)
         .setProps({
           maxValue: 370, // maxValue 370 = 2700K (1000000/2700)
           minValue: 153 // minValue 153 = 6500K (1000000/6500)
