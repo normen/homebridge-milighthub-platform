@@ -4,6 +4,11 @@ This is the change log for the plugin, all relevant changes will be listed here.
 
 For documentation please see the [README](https://github.com/normen/homebridge-milighthub-platform/blob/master/README.md)
 
+## 1.0.0
+
+- some doc/README updates
+- release full version after extensive testing
+
 ## 0.4.11
 
 - possible fix for Color Temperature Characteristic warning
