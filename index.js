@@ -278,7 +278,7 @@ class MiLightHubPlatform {
   initializeMQTT () {
     var platform = this;
     var mqtt_options = {
-      clientId: 'homebridge_milight_hub-' + Math.random().toString(16).substr(2, 8)
+      clientId: 'homebridge_milight_hub-' + Math.random().toString(16).substring(2, 10)
     };
     if (platform.mqttUser !== '' && platform.mqttPass !== '') {
       mqtt_options.username = platform.mqttUser;
