@@ -428,6 +428,16 @@ class MiLight {
     }
     if (lightbulbService.getCharacteristic(Characteristic.Brightness) && (lightbulbService.getCharacteristic(Characteristic.Brightness).value !== this.currentState.level)) {
       this.platform.debugLog('Backchannel update for ' + this.accessory.displayName + ': Brightness is updated from ' + lightbulbService.getCharacteristic(Characteristic.Brightness).value + ' to ' + this.currentState.level);
+
+      // The adaptive lighting implementation responds to changes in brightness.
+      // Switching to color mode results in a change of the brightness value from the Milight backend.
+      // This in turn results in a new setting of the Color Temperature value from the adaptive lighting implementation,
+      // which overrides the previously set value. This check bypasses this behavior.
+      if (this.adaptiveLightingController && this.adaptiveLightingController.isAdaptiveLightingActive() && this.currentState.previous_bulb_mode2 === 'color'){
+        this.platform.debugLog('Disabling adaptive lighting for ' + this.accessory.displayName + ' due to backchannel update on bulb_mode');
+        this.adaptiveLightingController.disableAdaptiveLighting();
+      }
+
       lightbulbService.getCharacteristic(Characteristic.Brightness)
         .updateValue(this.currentState.level);
     }
@@ -491,6 +501,10 @@ class MiLight {
     this.currentState.color_temp = returnValue.bulb_mode === 'color' || returnValue.color_temp === undefined ? this.currentState.color_temp : returnValue.color_temp;
     if(this.adaptiveLightingController && !this.adaptiveLightingController.isAdaptiveLightingActive()){
       this.currentState.previous_bulb_mode = returnValue.bulb_mode
+    }
+
+    if(this.adaptiveLightingController && this.adaptiveLightingController.isAdaptiveLightingActive()){
+      this.currentState.previous_bulb_mode2 = returnValue.bulb_mode
     }
     
     this.updateHomekitState();
