@@ -442,7 +442,7 @@ class MiLight {
         .updateValue(this.currentState.saturation);
     }
 
-    if (this.platform.rgbcctMode && (lightbulbService.getCharacteristic(Characteristic.ColorTemperature)) && (lightbulbService.getCharacteristic(Characteristic.Saturation).value !== this.currentState.color_temp)) {
+    if (this.platform.rgbcctMode && (lightbulbService.getCharacteristic(Characteristic.ColorTemperature)) && (lightbulbService.getCharacteristic(Characteristic.ColorTemperature).value !== this.currentState.color_temp)) {
       this.platform.debugLog('Backchannel update for ' + this.accessory.displayName + ': ColorTemperature is updated from ' + lightbulbService.getCharacteristic(Characteristic.ColorTemperature).value + ' to ' + this.currentState.color_temp);
       var HKColorTempartureValue = lightbulbService.getCharacteristic(Characteristic.ColorTemperature).value;
       
@@ -450,7 +450,6 @@ class MiLight {
         if(HKColorTempartureValue-this.currentState.color_temp === 1 || HKColorTempartureValue-this.currentState.color_temp === -1){
           // see https://github.com/sidoh/esp8266_milight_hub/issues/702
           this.platform.debugLog("MiLightHub ColorTemperature Correction; not disabling adaptive lighting.");
-        } else if(HKColorTempartureValue-this.currentState.color_temp === 0) {
         } else {
           // this check if needed for switching from color mode to white mode by enabling adaptive lighting
           if(!this.currentState.previous_bulb_mode === 'color'){
