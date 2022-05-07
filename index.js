@@ -409,13 +409,26 @@ class MiLight {
       this.platform.debugLog('Characteristic.ColorTemperature is set');
       lightbulbService.getCharacteristic(Characteristic.ColorTemperature)
         .on('set', this.setColorTemperature.bind(this));
+
+     this.adaptiveLightingController = new this.platform.api.hap.AdaptiveLightingController(lightbulbService);
+     accessory.configureController(this.adaptiveLightingController);
     }
+
   }
 
   // syncs HomeKit with the internal "currentState" by sending "updateValue" messages
   // for values where HomeKit reports a different state
   // basically the opposite of applyDesignatedState
   updateHomekitState() {
+    // function disableAdaptiveLightingIfActive(context){
+    //   if(context.adaptiveLightingController && context.adaptiveLightingController.isAdaptiveLightingActive()){
+    //     context.platform.log("Backchannel update: Disabling adaptive lighting");
+    //     context.adaptiveLightingController.disableAdaptiveLighting();
+    //   } else {
+    //     context.platform.log("No!")
+    //   }
+    // }
+
     const lightbulbService = this.accessory.getService(Service.Lightbulb);
     if (lightbulbService.getCharacteristic(Characteristic.On) && (lightbulbService.getCharacteristic(Characteristic.On).value !== this.currentState.state)) {
       this.platform.debugLog('Backchannel update for ' + this.accessory.displayName + ': On is updated from ' + lightbulbService.getCharacteristic(Characteristic.On).value + ' to ' + this.currentState.state);
@@ -437,11 +450,42 @@ class MiLight {
       lightbulbService.getCharacteristic(Characteristic.Saturation)
         .updateValue(this.currentState.saturation);
     }
-    if (this.platform.rgbcctMode && (lightbulbService.getCharacteristic(Characteristic.ColorTemperature)) && (lightbulbService.getCharacteristic(Characteristic.ColorTemperature).value !== this.currentState.color_temp)) {
+    // if (this.platform.rgbcctMode && (lightbulbService.getCharacteristic(Characteristic.ColorTemperature)) && (lightbulbService.getCharacteristic(Characteristic.ColorTemperature).value !== this.currentState.color_temp)) {
+    //   this.platform.debugLog('Backchannel update for ' + this.accessory.displayName + ': ColorTemperature is updated from ' + lightbulbService.getCharacteristic(Characteristic.ColorTemperature).value + ' to ' + this.currentState.color_temp);
+    //   lightbulbService.getCharacteristic(Characteristic.ColorTemperature)
+    //     .updateValue(this.currentState.color_temp);
+
+    //   // disableAdaptiveLightingIfActive(this)
+    // }
+
+    if (this.platform.rgbcctMode && (lightbulbService.getCharacteristic(Characteristic.ColorTemperature)) && (lightbulbService.getCharacteristic(Characteristic.Saturation).value !== this.currentState.color_temp)) {
       this.platform.debugLog('Backchannel update for ' + this.accessory.displayName + ': ColorTemperature is updated from ' + lightbulbService.getCharacteristic(Characteristic.ColorTemperature).value + ' to ' + this.currentState.color_temp);
-      lightbulbService.getCharacteristic(Characteristic.ColorTemperature)
+      var HKColorTempartureValue = lightbulbService.getCharacteristic(Characteristic.ColorTemperature).value;
+      
+      if (this.adaptiveLightingController && this.adaptiveLightingController.isAdaptiveLightingActive()){
+        if(HKColorTempartureValue-this.currentState.color_temp === 1 || HKColorTempartureValue-this.currentState.color_temp === -1){
+          // see https://github.com/sidoh/esp8266_milight_hub/issues/702
+          this.platform.debugLog("MiLightHub ColorTemperature Correction; not disabling adaptive lighting.");
+        } else if(HKColorTempartureValue-this.currentState.color_temp === 0) {
+        } else {
+          // this check if needed for switching from color mode to white mode by enabling adaptive lighting
+          if(!this.currentState.previous_bulb_mode === 'color'){
+            this.platform.debugLog('Disabling adaptive lighting for ' + this.accessory.displayName + ' due to backchannel update on ColorTemperature characteristic');
+            this.adaptiveLightingController.disableAdaptiveLighting();
+          } else {
+            this.currentState.previous_bulb_mode = 'white';
+          }
+
+          lightbulbService.getCharacteristic(Characteristic.ColorTemperature)
+          .updateValue(this.currentState.color_temp);
+        }
+      } else {
+        lightbulbService.getCharacteristic(Characteristic.ColorTemperature)
         .updateValue(this.currentState.color_temp);
+      }
     }
+
+    //TODO: Check night_mode & adaptive lighting
   }
   
   // Must be called when the designated state has changed and the lamp state needs to be updated
@@ -464,6 +508,10 @@ class MiLight {
     this.currentState.hue = returnValue.bulb_mode === 'color' ? (RGBtoHueSaturation(returnValue.color.r, returnValue.color.g, returnValue.color.b)).h : (HomeKitColorTemperatureToHueSaturation(returnValue.color_temp)).h;
     this.currentState.saturation = returnValue.bulb_mode === 'color' ? (RGBtoHueSaturation(returnValue.color.r, returnValue.color.g, returnValue.color.b)).s : (HomeKitColorTemperatureToHueSaturation(returnValue.color_temp)).s;
     this.currentState.color_temp = returnValue.bulb_mode === 'color' || returnValue.color_temp === undefined ? this.currentState.color_temp : returnValue.color_temp;
+    if(this.adaptiveLightingController && !this.adaptiveLightingController.isAdaptiveLightingActive()){
+      this.currentState.previous_bulb_mode = returnValue.bulb_mode
+    }
+    
     this.updateHomekitState();
   }
   
@@ -598,9 +646,15 @@ class MiLight {
   }
 
   setColorTemperature (value, callback) {
-    this.designatedState.color_temp = value;
-    this.platform.debugLog(['[setColorTemperature] ' + value]);
-    this.stateChanged();
+    // TODO: Move the adaptive lighting handling to applyDesignatedState()
+    // the adaptive lighting implementation of homebridge sends an update every 60 seconds 
+    // even if the color_temp value didn't change. this avoids creating unnecessary traffic
+    // if the value to be set is not different from the current value.
+    if(this.currentState.color_temp !== value){
+      this.designatedState.color_temp = value;
+      this.platform.debugLog(['[setColorTemperature] ' + value]);
+      this.stateChanged();
+    }
     callback(null);
   }
 }
