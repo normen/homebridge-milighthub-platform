@@ -443,6 +443,8 @@ class MiLight {
     }
     if (lightbulbService.getCharacteristic(Characteristic.Hue) && (lightbulbService.getCharacteristic(Characteristic.Hue).value !== this.currentState.hue)) {
       this.platform.debugLog('Backchannel update for ' + this.accessory.displayName + ': Hue is updated from ' + lightbulbService.getCharacteristic(Characteristic.Hue).value + ' to ' + this.currentState.hue);
+
+      //TODO: Add disableAdaptiveLighting here to disable on Color Backchannel update
       lightbulbService.getCharacteristic(Characteristic.Hue)
         .updateValue(this.currentState.hue);
     }
@@ -461,6 +463,7 @@ class MiLight {
           // see https://github.com/sidoh/esp8266_milight_hub/issues/702
           this.platform.debugLog("MiLightHub ColorTemperature Correction; not disabling adaptive lighting.");
         } else {
+          //TODO: Disabling Adaptive Lighting on Backchannel update to Color Temperature does not work
           // this check is needed for switching from color mode to white mode by enabling adaptive lighting
           if(!this.currentState.previous_bulb_mode === 'color'){
             this.platform.debugLog('Disabling adaptive lighting for ' + this.accessory.displayName + ' due to backchannel update on ColorTemperature characteristic');
@@ -499,6 +502,8 @@ class MiLight {
     this.currentState.hue = returnValue.bulb_mode === 'color' ? (RGBtoHueSaturation(returnValue.color.r, returnValue.color.g, returnValue.color.b)).h : (HomeKitColorTemperatureToHueSaturation(returnValue.color_temp)).h;
     this.currentState.saturation = returnValue.bulb_mode === 'color' ? (RGBtoHueSaturation(returnValue.color.r, returnValue.color.g, returnValue.color.b)).s : (HomeKitColorTemperatureToHueSaturation(returnValue.color_temp)).s;
     this.currentState.color_temp = returnValue.bulb_mode === 'color' || returnValue.color_temp === undefined ? this.currentState.color_temp : returnValue.color_temp;
+
+    //TODO: Can this be renamed to a more explaining variable or handled in an other (better) way?
     if(this.adaptiveLightingController && !this.adaptiveLightingController.isAdaptiveLightingActive()){
       this.currentState.previous_bulb_mode = returnValue.bulb_mode
     }
