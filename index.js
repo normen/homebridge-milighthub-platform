@@ -451,7 +451,7 @@ class MiLight {
           // see https://github.com/sidoh/esp8266_milight_hub/issues/702
           this.platform.debugLog("MiLightHub ColorTemperature Correction; not disabling adaptive lighting.");
         } else {
-          // this check if needed for switching from color mode to white mode by enabling adaptive lighting
+          // this check is needed for switching from color mode to white mode by enabling adaptive lighting
           if(!this.currentState.previous_bulb_mode === 'color'){
             this.platform.debugLog('Disabling adaptive lighting for ' + this.accessory.displayName + ' due to backchannel update on ColorTemperature characteristic');
             this.adaptiveLightingController.disableAdaptiveLighting();
