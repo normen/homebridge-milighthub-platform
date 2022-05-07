@@ -420,15 +420,6 @@ class MiLight {
   // for values where HomeKit reports a different state
   // basically the opposite of applyDesignatedState
   updateHomekitState() {
-    // function disableAdaptiveLightingIfActive(context){
-    //   if(context.adaptiveLightingController && context.adaptiveLightingController.isAdaptiveLightingActive()){
-    //     context.platform.log("Backchannel update: Disabling adaptive lighting");
-    //     context.adaptiveLightingController.disableAdaptiveLighting();
-    //   } else {
-    //     context.platform.log("No!")
-    //   }
-    // }
-
     const lightbulbService = this.accessory.getService(Service.Lightbulb);
     if (lightbulbService.getCharacteristic(Characteristic.On) && (lightbulbService.getCharacteristic(Characteristic.On).value !== this.currentState.state)) {
       this.platform.debugLog('Backchannel update for ' + this.accessory.displayName + ': On is updated from ' + lightbulbService.getCharacteristic(Characteristic.On).value + ' to ' + this.currentState.state);
@@ -450,13 +441,6 @@ class MiLight {
       lightbulbService.getCharacteristic(Characteristic.Saturation)
         .updateValue(this.currentState.saturation);
     }
-    // if (this.platform.rgbcctMode && (lightbulbService.getCharacteristic(Characteristic.ColorTemperature)) && (lightbulbService.getCharacteristic(Characteristic.ColorTemperature).value !== this.currentState.color_temp)) {
-    //   this.platform.debugLog('Backchannel update for ' + this.accessory.displayName + ': ColorTemperature is updated from ' + lightbulbService.getCharacteristic(Characteristic.ColorTemperature).value + ' to ' + this.currentState.color_temp);
-    //   lightbulbService.getCharacteristic(Characteristic.ColorTemperature)
-    //     .updateValue(this.currentState.color_temp);
-
-    //   // disableAdaptiveLightingIfActive(this)
-    // }
 
     if (this.platform.rgbcctMode && (lightbulbService.getCharacteristic(Characteristic.ColorTemperature)) && (lightbulbService.getCharacteristic(Characteristic.Saturation).value !== this.currentState.color_temp)) {
       this.platform.debugLog('Backchannel update for ' + this.accessory.displayName + ': ColorTemperature is updated from ' + lightbulbService.getCharacteristic(Characteristic.ColorTemperature).value + ' to ' + this.currentState.color_temp);
@@ -484,8 +468,6 @@ class MiLight {
         .updateValue(this.currentState.color_temp);
       }
     }
-
-    //TODO: Check night_mode & adaptive lighting
   }
   
   // Must be called when the designated state has changed and the lamp state needs to be updated
