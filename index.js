@@ -521,7 +521,7 @@ class MiLight {
   //
   // This convoluted beauty of a mess is the central point where the plugin tries
   // to make HomeKits idea work out by creating a command to send to the lamp.
-  // To do so it makes changes to the currentState variable unitl it is the same as the designatedState
+  // To do so it makes changes to the currentState variable until it is the same as the designatedState
   // while doing so it also adds the appropriate elements to the command which is then sent.
   //
   // Many MiLight plugins had all kinds of hacks and tricks placed all over the code to get this right
