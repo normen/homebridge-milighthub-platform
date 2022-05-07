@@ -590,10 +590,17 @@ class MiLight {
         cstate.kelvin = kelvin;
       }
     } else if (dstate.color_temp !== undefined) {
-      command.color_temp = dstate.color_temp;
-      cstate.color_temp = dstate.color_temp;
+      // see https://github.com/sidoh/esp8266_milight_hub/issues/702
+      if(dstate.color_temp-cstate.color_temp > 1 || dstate.color_temp-cstate.color_temp < -1){
+        command.color_temp = dstate.color_temp;
+        cstate.color_temp = dstate.color_temp;
+      }
     }
-    this.platform.sendCommand(this.name, this.device_id, this.remote_type, this.group_id, command);
+
+    // send command only if there's a command to send. empty command object's are created when using adaptive lighting
+    if(Object.keys(command).length){
+      this.platform.sendCommand(this.name, this.device_id, this.remote_type, this.group_id, command);
+    }
   }
 
   // setters for Homebridge, set the designatedState and trigger a changeState
@@ -627,15 +634,9 @@ class MiLight {
   }
 
   setColorTemperature (value, callback) {
-    // TODO: Move the adaptive lighting handling to applyDesignatedState()
-    // the adaptive lighting implementation of homebridge sends an update every 60 seconds 
-    // even if the color_temp value didn't change. this avoids creating unnecessary traffic
-    // if the value to be set is not different from the current value.
-    if(this.currentState.color_temp !== value){
-      this.designatedState.color_temp = value;
-      this.platform.debugLog(['[setColorTemperature] ' + value]);
-      this.stateChanged();
-    }
+    this.designatedState.color_temp = value;
+    this.platform.debugLog(['[setColorTemperature] ' + value]);
+    this.stateChanged();
     callback(null);
   }
 }
