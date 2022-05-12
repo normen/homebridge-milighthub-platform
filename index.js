@@ -441,18 +441,34 @@ class MiLight {
       lightbulbService.getCharacteristic(Characteristic.Brightness)
         .updateValue(this.currentState.level);
     }
-    if (lightbulbService.getCharacteristic(Characteristic.Hue) && (lightbulbService.getCharacteristic(Characteristic.Hue).value !== this.currentState.hue)) {
-      this.platform.debugLog('Backchannel update for ' + this.accessory.displayName + ': Hue is updated from ' + lightbulbService.getCharacteristic(Characteristic.Hue).value + ' to ' + this.currentState.hue);
 
-      //TODO: Add disableAdaptiveLighting here to disable on Color Backchannel update
-      lightbulbService.getCharacteristic(Characteristic.Hue)
-        .updateValue(this.currentState.hue);
-    }
-    if (lightbulbService.getCharacteristic(Characteristic.Saturation) && (lightbulbService.getCharacteristic(Characteristic.Saturation).value !== this.currentState.saturation)) {
-      this.platform.debugLog('Backchannel update for ' + this.accessory.displayName + ': Saturation is updated from ' + lightbulbService.getCharacteristic(Characteristic.Saturation).value + ' to ' + this.currentState.saturation);
-      lightbulbService.getCharacteristic(Characteristic.Saturation)
-        .updateValue(this.currentState.saturation);
-    }
+      // Don't update hue & saturation if Bulb Mode is white was updated previously
+      if(this.currentState.bulb_mode !== 'white'){
+        if (lightbulbService.getCharacteristic(Characteristic.Hue) && (lightbulbService.getCharacteristic(Characteristic.Hue).value !== this.currentState.hue)) {
+          this.platform.debugLog('Backchannel update for ' + this.accessory.displayName + ': Hue is updated from ' + lightbulbService.getCharacteristic(Characteristic.Hue).value + ' to ' + this.currentState.hue);
+    
+          //TODO: Add disableAdaptiveLighting here to disable on Color Backchannel update
+          lightbulbService.getCharacteristic(Characteristic.Hue)
+            .updateValue(this.currentState.hue);
+        }
+        if (lightbulbService.getCharacteristic(Characteristic.Saturation) && (lightbulbService.getCharacteristic(Characteristic.Saturation).value !== this.currentState.saturation)) {
+          this.platform.debugLog('Backchannel update for ' + this.accessory.displayName + ': Saturation is updated from ' + lightbulbService.getCharacteristic(Characteristic.Saturation).value + ' to ' + this.currentState.saturation);
+          lightbulbService.getCharacteristic(Characteristic.Saturation)
+            .updateValue(this.currentState.saturation);
+        }
+      }
+
+
+if(this.adaptiveLightingController && this.adaptiveLightingController.isAdaptiveLightingActive()){
+  console.log("======================================");
+  console.log(this.adaptiveLightingController.getAdaptiveLightingStartTimeOfTransition());
+//  console.log(this.adaptiveLightingController.getAdaptiveLightingTimeOffset());
+//  console.log(this.adaptiveLightingController.getAdaptiveLightingTransitionCurve());
+//  console.log(this.adaptiveLightingController.getAdaptiveLightingBrightnessMultiplierRange());
+//  console.log(this.adaptiveLightingController.getAdaptiveLightingUpdateInterval());
+//  console.log(this.adaptiveLightingController.getAdaptiveLightingNotifyIntervalThreshold());
+//  console.log("======================================");
+}
 
     if (this.platform.rgbcctMode && (lightbulbService.getCharacteristic(Characteristic.ColorTemperature)) && (lightbulbService.getCharacteristic(Characteristic.ColorTemperature).value !== this.currentState.color_temp)) {
       this.platform.debugLog('Backchannel update for ' + this.accessory.displayName + ': ColorTemperature is updated from ' + lightbulbService.getCharacteristic(Characteristic.ColorTemperature).value + ' to ' + this.currentState.color_temp);
@@ -465,6 +481,8 @@ class MiLight {
         } else {
           //TODO: Disabling Adaptive Lighting on Backchannel update to Color Temperature does not work
           // this check is needed for switching from color mode to white mode by enabling adaptive lighting
+
+          //TODO: If start time is greater than 3 seconds (getAdaptiveLightingStartTimeOfTransition) && (lightbulbService.getCharacteristic(Characteristic.ColorTemperature).value - (Minus!) this.currentState.color_temp greater than 5
           if(!this.currentState.previous_bulb_mode === 'color'){
             this.platform.debugLog('Disabling adaptive lighting for ' + this.accessory.displayName + ' due to backchannel update on ColorTemperature characteristic');
             this.adaptiveLightingController.disableAdaptiveLighting();
@@ -502,6 +520,7 @@ class MiLight {
     this.currentState.hue = returnValue.bulb_mode === 'color' ? (RGBtoHueSaturation(returnValue.color.r, returnValue.color.g, returnValue.color.b)).h : (HomeKitColorTemperatureToHueSaturation(returnValue.color_temp)).h;
     this.currentState.saturation = returnValue.bulb_mode === 'color' ? (RGBtoHueSaturation(returnValue.color.r, returnValue.color.g, returnValue.color.b)).s : (HomeKitColorTemperatureToHueSaturation(returnValue.color_temp)).s;
     this.currentState.color_temp = returnValue.bulb_mode === 'color' || returnValue.color_temp === undefined ? this.currentState.color_temp : returnValue.color_temp;
+    this.currentState.bulb_mode = returnValue.bulb_mode;
 
     //TODO: Can this be renamed to a more explaining variable or handled in an other (better) way?
     if(this.adaptiveLightingController && !this.adaptiveLightingController.isAdaptiveLightingActive()){
@@ -531,10 +550,13 @@ class MiLight {
     const cstate = this.currentState;
     this.designatedState = {};
     const command = {};
+
     if (typeof dstate.state !== 'undefined') { // check if HomeKit actually set an on/off state
       if (dstate.state === true && dstate.level !== 0) {
         command.state = 'On';
-        if (this.platform.darkMode) { // set cached level in dark mode
+
+        // Dark Mode
+        if (this.platform.darkMode) { // set cached level for dark mode
           if (typeof dstate.level === 'undefined' && typeof cstate.cachedLevel !== 'undefined' && (dstate.state === true || cstate.state !== false)) {
             dstate.level = cstate.cachedLevel;
           } else if (typeof dstate.level === 'number') {
@@ -548,15 +570,19 @@ class MiLight {
             }
           }
         }
+
+        // Brightness with handling for Night Mode
         if (dstate.level > 1) {
           command.level = dstate.level;
-        } else if (dstate.level === 1) { // set night mode if level is 1, remove "on" from command
+        } else if (dstate.level === 1) {
           delete command.state;
           command.commands = ['night_mode'];
         }
         cstate.level = dstate.level;
       } else {
         command.state = 'Off';
+
+        // Dark Mode
         if (this.platform.darkMode) {
           if (cstate.level !== 1) {
             cstate.cachedLevel = cstate.level;
@@ -572,6 +598,23 @@ class MiLight {
       }
       cstate.state = command.state;
     }
+
+      // The MiLight Backend caches the last brightness value for 'bulb_mode = color' and 'bulb_mode = white' 
+      // separately and returns them again as a Backchannel update. This behaviour is circumvented here to 
+      // get a more streamlined experience.
+      if (cstate.bulb_mode !== dstate.bulb_mode){
+        //TODO: If dark mode --> send command here for setting level to 1
+        dstate.level = cstate.level;
+
+        // Brightness with handling for Night Mode
+        if (dstate.level > 1) {
+          command.level = dstate.level;
+        } else if (dstate.level === 1) {
+          delete command.state;
+          command.commands = ['night_mode'];
+        }
+      }
+
     if (dstate.saturation !== undefined) {
       if (dstate.saturation === 0) {
         if (command.commands) {
@@ -610,13 +653,13 @@ class MiLight {
       }
     } else if (dstate.color_temp !== undefined) {
       // see https://github.com/sidoh/esp8266_milight_hub/issues/702
-      if(dstate.color_temp-cstate.color_temp > 1 || dstate.color_temp-cstate.color_temp < -1){
+      if(dstate.color_temp-cstate.color_temp > 1 || dstate.color_temp-cstate.color_temp < -1 || cstate.bulb_mode === 'color'){
         command.color_temp = dstate.color_temp;
         cstate.color_temp = dstate.color_temp;
       }
     }
 
-    // send command only if there's a command to send. empty command object's are created when using adaptive lighting
+    // send command only if there's really a command to send. empty command object's are created when using adaptive lighting
     if(Object.keys(command).length){
       this.platform.sendCommand(this.name, this.device_id, this.remote_type, this.group_id, command);
     }
@@ -640,6 +683,7 @@ class MiLight {
 
   setHue (value, callback) {
     this.designatedState.hue = value;
+    this.designatedState.bulb_mode = 'color';
     this.platform.debugLog(['[setHue] ' + value]);
     this.stateChanged();
     callback(null);
@@ -654,6 +698,7 @@ class MiLight {
 
   setColorTemperature (value, callback) {
     this.designatedState.color_temp = value;
+    this.designatedState.bulb_mode = 'white';
     this.platform.debugLog(['[setColorTemperature] ' + value]);
     this.stateChanged();
     callback(null);
@@ -731,3 +776,5 @@ function HomeKitColorTemperatureToHueSaturation(ColorTemperature) {
     s: Math.round(s)
   };
 }
+//TODO: Restarting homebridge when adaptive lighting is enabled causes the lights go to Color Temperature = 370
+// for 1 cycle (60 seconds). Fix this!
