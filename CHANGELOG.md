@@ -8,7 +8,7 @@ For documentation please see the [README](https://github.com/normen/homebridge-m
 
 - added adaptive lighting
 - added brightness caching for changes between color modes
--- seperate flag added to mitigate flashing on low brightness values
+  - seperate flag added to mitigate flashing on low brightness values
 
 ## 1.0.0
 
