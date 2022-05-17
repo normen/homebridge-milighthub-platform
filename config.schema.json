@@ -46,6 +46,13 @@
       "description": "A feature to mitigate the bright flashing of the lights if you turn them on with a low brightness value & to cache the last value before power off",
       "required": false
     },
+    "darkModeOnModeChange": {
+      "title": "Mitigate bright flashing of lights during mode change (only relevant if RGB+CCT mode is enabled)",
+      "type": "boolean",
+      "default": false,
+      "description": "A feature to mitigate the bright flashing of the lights if you cycle between RGB and Color Temperature mode",
+      "required": false
+    },
     "rgbcctMode": {
       "title": "RGB+CCT mode enabled",
       "type": "boolean",

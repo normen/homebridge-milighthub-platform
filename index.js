@@ -30,6 +30,7 @@ class MiLightHubPlatform {
     this.debug = config.debug || false;
     this.darkMode = config.darkMode || false;
     this.darkModeOnStateChange = this.darkMode;
+    this.darkModeOnModeChange = config.darkModeOnModeChange || false;
     this.host = config.host || 'milight-hub.local';
     this.syncHubInterval = config.syncHubInterval || 10;
     this.commandDelay = config.commandDelay || 100;
@@ -614,7 +615,12 @@ if(this.adaptiveLightingController && this.adaptiveLightingController.isAdaptive
     // separately and returns them again as a Backchannel update on a bulb_mode change. This behaviour is
     // circumvented here to get a more streamlined experience.
     if (cstate.bulb_mode !== dstate.bulb_mode && typeof dstate.bulb_mode !== 'undefined' && cstate.state !== dstate.state){
-      //TODO: If dark mode --> send command here for setting level to 1
+      if (this.platform.darkModeOnModeChange) {
+        const darkModeOnModeChangeCommand = {};
+        darkModeOnModeChangeCommand.state = 'On';
+        darkModeOnModeChangeCommand.level = 2;
+        this.platform.sendCommand(this.name, this.device_id, this.remote_type, this.group_id, darkModeOnModeChangeCommand);
+      }
       dstate.level = cstate.level;
 
       // Brightness with handling for Night Mode
