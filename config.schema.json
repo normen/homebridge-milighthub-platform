@@ -102,6 +102,7 @@
         "httpPassword",
         "backchannel",
         "darkMode",
+        "darkModeOnModeChange",
         "rgbcctMode",
         "forceHTTP",
         "syncHubInterval",
