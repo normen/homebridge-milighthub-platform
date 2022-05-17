@@ -445,49 +445,51 @@ class MiLight {
 
       lightbulbService.getCharacteristic(Characteristic.Brightness)
         .updateValue(this.currentState.level);
+
+      if(this.adaptiveLightingController && this.adaptiveLightingController.isAdaptiveLightingActive()){
+        return;
+      }
     }
 
-      // Don't update hue & saturation if Bulb Mode is white / Color Temperature was adjusted
-      if(this.currentState.bulb_mode !== 'white'){
-        if (lightbulbService.getCharacteristic(Characteristic.Hue) && (lightbulbService.getCharacteristic(Characteristic.Hue).value !== this.currentState.hue)) {
-          this.platform.debugLog('Backchannel update for ' + this.accessory.displayName + ': Hue is updated from ' + lightbulbService.getCharacteristic(Characteristic.Hue).value + ' to ' + this.currentState.hue);
-    
-          //TODO: Add disableAdaptiveLighting here to disable on Color Backchannel update
-          lightbulbService.getCharacteristic(Characteristic.Hue)
-            .updateValue(this.currentState.hue);
-        }
-        if (lightbulbService.getCharacteristic(Characteristic.Saturation) && (lightbulbService.getCharacteristic(Characteristic.Saturation).value !== this.currentState.saturation)) {
-          this.platform.debugLog('Backchannel update for ' + this.accessory.displayName + ': Saturation is updated from ' + lightbulbService.getCharacteristic(Characteristic.Saturation).value + ' to ' + this.currentState.saturation);
-          lightbulbService.getCharacteristic(Characteristic.Saturation)
-            .updateValue(this.currentState.saturation);
+    // Don't update hue & saturation if Bulb Mode is white / Color Temperature was adjusted
+    if(this.currentState.bulb_mode !== 'white'){
+      if (lightbulbService.getCharacteristic(Characteristic.Hue) && (lightbulbService.getCharacteristic(Characteristic.Hue).value !== this.currentState.hue)) {
+        this.platform.debugLog('Backchannel update for ' + this.accessory.displayName + ': Hue is updated from ' + lightbulbService.getCharacteristic(Characteristic.Hue).value + ' to ' + this.currentState.hue);
+        lightbulbService.getCharacteristic(Characteristic.Hue)
+          .updateValue(this.currentState.hue);
+
+        if(this.adaptiveLightingController && this.adaptiveLightingController.isAdaptiveLightingActive()){
+          this.platform.debugLog('Disabling adaptive lighting for ' + this.accessory.displayName + ' due to backchannel update on bulb_mode');
+          this.adaptiveLightingController.disableAdaptiveLighting();
         }
       }
-
-
-if(this.adaptiveLightingController && this.adaptiveLightingController.isAdaptiveLightingActive()){
-  console.log("======================================");
-  console.log(this.adaptiveLightingController.getAdaptiveLightingStartTimeOfTransition());
-//  console.log(this.adaptiveLightingController.getAdaptiveLightingTimeOffset());
-//  console.log(this.adaptiveLightingController.getAdaptiveLightingTransitionCurve());
-//  console.log(this.adaptiveLightingController.getAdaptiveLightingBrightnessMultiplierRange());
-//  console.log(this.adaptiveLightingController.getAdaptiveLightingUpdateInterval());
-//  console.log(this.adaptiveLightingController.getAdaptiveLightingNotifyIntervalThreshold());
-//  console.log("======================================");
-}
+      if (lightbulbService.getCharacteristic(Characteristic.Saturation) && (lightbulbService.getCharacteristic(Characteristic.Saturation).value !== this.currentState.saturation)) {
+        this.platform.debugLog('Backchannel update for ' + this.accessory.displayName + ': Saturation is updated from ' + lightbulbService.getCharacteristic(Characteristic.Saturation).value + ' to ' + this.currentState.saturation);
+        lightbulbService.getCharacteristic(Characteristic.Saturation)
+          .updateValue(this.currentState.saturation);
+      }
+    }
 
     if (this.platform.rgbcctMode && (lightbulbService.getCharacteristic(Characteristic.ColorTemperature)) && (lightbulbService.getCharacteristic(Characteristic.ColorTemperature).value !== this.currentState.color_temp)) {
       this.platform.debugLog('Backchannel update for ' + this.accessory.displayName + ': ColorTemperature is updated from ' + lightbulbService.getCharacteristic(Characteristic.ColorTemperature).value + ' to ' + this.currentState.color_temp);
       var HKColorTempartureValue = lightbulbService.getCharacteristic(Characteristic.ColorTemperature).value;
-      
+
       if (this.adaptiveLightingController && this.adaptiveLightingController.isAdaptiveLightingActive()){
         if(HKColorTempartureValue-this.currentState.color_temp === 1 || HKColorTempartureValue-this.currentState.color_temp === -1){
           // see https://github.com/sidoh/esp8266_milight_hub/issues/702
           this.platform.debugLog("MiLightHub ColorTemperature Correction; not disabling adaptive lighting.");
         } else {
-          //TODO: Disabling Adaptive Lighting on Backchannel update to Color Temperature does not work
-          // this check is needed for switching from color mode to white mode by enabling adaptive lighting
+          if(lightbulbService.getCharacteristic(Characteristic.On).value && (lightbulbService.getCharacteristic(Characteristic.ColorTemperature).value - this.currentState.color_temp)){
+            // After a restart of the bridge if adaptive lighting is on and the lights are off turning 
+            // them on results in adaptive lighting being disabled. This check bypasses this behaviour
+            if(this.currentState.previous_state){
+              this.currentState.previous_state = false;
+            } else {
+              this.platform.debugLog('Disabling adaptive lighting for ' + this.accessory.displayName + ' due to backchannel update on ColorTemperature characteristic');
+              this.adaptiveLightingController.disableAdaptiveLighting();
+            }
+          }
 
-          //TODO: If start time is greater than 3 seconds (getAdaptiveLightingStartTimeOfTransition) && (lightbulbService.getCharacteristic(Characteristic.ColorTemperature).value - (Minus!) this.currentState.color_temp greater than 5
           if(!this.currentState.previous_bulb_mode === 'color'){
             this.platform.debugLog('Disabling adaptive lighting for ' + this.accessory.displayName + ' due to backchannel update on ColorTemperature characteristic');
             this.adaptiveLightingController.disableAdaptiveLighting();
@@ -538,8 +540,10 @@ if(this.adaptiveLightingController && this.adaptiveLightingController.isAdaptive
     if(this.adaptiveLightingController && !this.adaptiveLightingController.isAdaptiveLightingActive()){
       this.currentState.previous_bulb_mode = returnValue.bulb_mode
     }
-
     if(this.adaptiveLightingController && this.adaptiveLightingController.isAdaptiveLightingActive()){
+      if(typeof this.currentState.previous_state === 'undefined'){
+        this.currentState.previous_state = returnValue.state === 'OFF'
+      }
       this.currentState.previous_bulb_mode2 = returnValue.bulb_mode
     }
     
