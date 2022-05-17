@@ -511,7 +511,7 @@ if(this.adaptiveLightingController && this.adaptiveLightingController.isAdaptive
   // we get a coherent state to send to the light
   stateChanged () {
     // The adaptive lighting implementation sends an update immediately after restarting this bridge.
-    // It would apply the current best-known values which is brightness = 100 which causes the lights so lose their
+    // It would apply the current best-known values which is brightness = 100 which causes the lights to lose their
     // actual brightness value. This check prevents this behaviour.
     if(this.adaptiveLightingController && this.adaptiveLightingController.isAdaptiveLightingActive() && !this.platform.firstSuccessfulRunFinished){
       return;
