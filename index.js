@@ -445,7 +445,7 @@ class MiLight {
         .updateValue(this.currentState.level);
     }
 
-      // Don't update hue & saturation if Bulb Mode is white was updated previously
+      // Don't update hue & saturation if Bulb Mode is white / Color Temperature was adjusted
       if(this.currentState.bulb_mode !== 'white'){
         if (lightbulbService.getCharacteristic(Characteristic.Hue) && (lightbulbService.getCharacteristic(Characteristic.Hue).value !== this.currentState.hue)) {
           this.platform.debugLog('Backchannel update for ' + this.accessory.displayName + ': Hue is updated from ' + lightbulbService.getCharacteristic(Characteristic.Hue).value + ' to ' + this.currentState.hue);
