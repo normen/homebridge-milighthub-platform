@@ -575,8 +575,6 @@ if(this.adaptiveLightingController && this.adaptiveLightingController.isAdaptive
             if (cstate.powerOffByBrightness && dstate.level === 100) {
               cstate.powerOffByBrightness = false;
               dstate.level = cstate.cachedLevel;
-              // TODO: why exactly is this here? can this be avoided with updateHomekitState()?
-              this.accessory.getService(Service.Lightbulb).getCharacteristic(Characteristic.Brightness).updateValue(dstate.level);
             } else if (cstate.powerOffByBrightness === false) {
               cstate.cachedLevel = cstate.level;
             }
