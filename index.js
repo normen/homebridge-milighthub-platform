@@ -609,21 +609,21 @@ if(this.adaptiveLightingController && this.adaptiveLightingController.isAdaptive
       cstate.state = command.state;
     }
 
-      // The MiLight Backend caches the last brightness value for 'bulb_mode = color' and 'bulb_mode = white' 
-      // separately and returns them again as a Backchannel update. This behaviour is circumvented here to 
-      // get a more streamlined experience.
-      if (cstate.bulb_mode !== dstate.bulb_mode){
-        //TODO: If dark mode --> send command here for setting level to 1
-        dstate.level = cstate.level;
+    // The MiLight Backend caches the last brightness value for 'bulb_mode = color' and 'bulb_mode = white'
+    // separately and returns them again as a Backchannel update on a bulb_mode change. This behaviour is
+    // circumvented here to get a more streamlined experience.
+    if (cstate.bulb_mode !== dstate.bulb_mode && typeof dstate.bulb_mode !== 'undefined' && cstate.state !== dstate.state){
+      //TODO: If dark mode --> send command here for setting level to 1
+      dstate.level = cstate.level;
 
-        // Brightness with handling for Night Mode
-        if (dstate.level > 1) {
-          command.level = dstate.level;
-        } else if (dstate.level === 1) {
-          delete command.state;
-          command.commands = ['night_mode'];
-        }
+      // Brightness with handling for Night Mode
+      if (dstate.level > 1) {
+        command.level = dstate.level;
+      } else if (dstate.level === 1) {
+        delete command.state;
+        command.commands = ['night_mode'];
       }
+    }
 
     if (dstate.saturation !== undefined) {
       if (dstate.saturation === 0) {
