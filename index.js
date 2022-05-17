@@ -44,6 +44,8 @@ class MiLightHubPlatform {
     this.cachedPromises = [];
     this.accessories = [];
 
+    this.firstSuccessfulRunFinished = false;
+
     this.api.on('didFinishLaunching', function () {
       platform.debugLog('DidFinishLaunching');
       platform.getServerLightList();
@@ -127,6 +129,7 @@ class MiLightHubPlatform {
           lightList.push(lightInfo);
         }
         platform.syncLightLists(lightList);
+        platform.firstSuccessfulRunFinished = true;
       }
       setTimeout(platform.getServerLightList.bind(platform), platform.syncHubInterval * 1000);
     });
@@ -505,6 +508,13 @@ if(this.adaptiveLightingController && this.adaptiveLightingController.isAdaptive
   // HomeKit likes to send each parameter in quick succession so this buffers the input so
   // we get a coherent state to send to the light
   stateChanged () {
+    // The adaptive lighting implementation sends an update immediately after restarting this bridge.
+    // It would apply the current best-known values which is brightness = 100 which causes the lights so lose their
+    // actual brightness value. This check prevents this behaviour.
+    if(this.adaptiveLightingController && this.adaptiveLightingController.isAdaptiveLightingActive() && !this.platform.firstSuccessfulRunFinished){
+      return;
+    }
+
     if (this.myTimeout) {
       clearTimeout(this.myTimeout);
     }
@@ -776,5 +786,3 @@ function HomeKitColorTemperatureToHueSaturation(ColorTemperature) {
     s: Math.round(s)
   };
 }
-//TODO: Restarting homebridge when adaptive lighting is enabled causes the lights go to Color Temperature = 370
-// for 1 cycle (60 seconds). Fix this!
