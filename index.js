@@ -29,6 +29,7 @@ class MiLightHubPlatform {
     this.forceHTTP = config.forceHTTP || false;
     this.debug = config.debug || false;
     this.darkMode = config.darkMode || false;
+    this.darkModeOnStateChange = this.darkMode;
     this.host = config.host || 'milight-hub.local';
     this.syncHubInterval = config.syncHubInterval || 10;
     this.commandDelay = config.commandDelay || 100;
@@ -566,7 +567,7 @@ if(this.adaptiveLightingController && this.adaptiveLightingController.isAdaptive
         command.state = 'On';
 
         // Dark Mode
-        if (this.platform.darkMode) { // set cached level for dark mode
+        if (this.platform.darkModeOnStateChange) { // set cached level for dark mode
           if (typeof dstate.level === 'undefined' && typeof cstate.cachedLevel !== 'undefined' && (dstate.state === true || cstate.state !== false)) {
             dstate.level = cstate.cachedLevel;
           } else if (typeof dstate.level === 'number') {
@@ -593,7 +594,7 @@ if(this.adaptiveLightingController && this.adaptiveLightingController.isAdaptive
         command.state = 'Off';
 
         // Dark Mode
-        if (this.platform.darkMode) {
+        if (this.platform.darkModeOnStateChange) {
           if (cstate.level !== 1) {
             cstate.cachedLevel = cstate.level;
           }
