@@ -567,51 +567,51 @@ class MiLight {
     this.designatedState = {};
     const command = {};
 
-    if (typeof dstate.state !== 'undefined') { // check if HomeKit actually set an on/off state
-      if (dstate.state === true && dstate.level !== 0) {
+    if (dstate.state === true || dstate.level !== 0) {
+      if (cstate.state != 'On' && cstate.state != true && typeof cstate.state !== 'undefined') {
         command.state = 'On';
+      }
 
-        // Dark Mode
-        if (this.platform.darkModeOnStateChange) { // set cached level for dark mode
-          if (typeof dstate.level === 'undefined' && typeof cstate.cachedLevel !== 'undefined' && (dstate.state === true || cstate.state !== false)) {
+      // Dark Mode
+      if (this.platform.darkModeOnStateChange) { // set cached level for dark mode
+        if (typeof dstate.level === 'undefined' && typeof cstate.cachedLevel !== 'undefined' && (dstate.state === true || cstate.state !== false)) {
+          dstate.level = cstate.cachedLevel;
+        } else if (typeof dstate.level === 'number') {
+          if (cstate.powerOffByBrightness && dstate.level === 100) {
+            cstate.powerOffByBrightness = false;
             dstate.level = cstate.cachedLevel;
-          } else if (typeof dstate.level === 'number') {
-            if (cstate.powerOffByBrightness && dstate.level === 100) {
-              cstate.powerOffByBrightness = false;
-              dstate.level = cstate.cachedLevel;
-            } else if (cstate.powerOffByBrightness === false) {
-              cstate.cachedLevel = cstate.level;
-            }
-          }
-        }
-
-        // Brightness with handling for Night Mode
-        if (dstate.level > 1) {
-          command.level = dstate.level;
-        } else if (dstate.level === 1) {
-          delete command.state;
-          command.commands = ['night_mode'];
-        }
-        cstate.level = dstate.level;
-      } else {
-        command.state = 'Off';
-
-        // Dark Mode
-        if (this.platform.darkModeOnStateChange) {
-          if (cstate.level !== 1) {
+          } else if (cstate.powerOffByBrightness === false) {
             cstate.cachedLevel = cstate.level;
           }
-          if (dstate.level === 0) {
-            cstate.powerOffByBrightness = true;
-          } else {
-            cstate.powerOffByBrightness = false;
-          }
-          command.level = 1;
-          cstate.level = command.level;
         }
       }
-      cstate.state = command.state;
+
+      // Brightness with handling for Night Mode
+      if (dstate.level > 1) {
+        command.level = dstate.level;
+      } else if (dstate.level === 1) {
+        delete command.state;
+        command.commands = ['night_mode'];
+      }
+      cstate.level = dstate.level;
+    } else {
+      command.state = 'Off';
+
+      // Dark Mode
+      if (this.platform.darkModeOnStateChange) {
+        if (cstate.level !== 1) {
+          cstate.cachedLevel = cstate.level;
+        }
+        if (dstate.level === 0) {
+          cstate.powerOffByBrightness = true;
+        } else {
+          cstate.powerOffByBrightness = false;
+        }
+        command.level = 1;
+        cstate.level = command.level;
+      }
     }
+    cstate.state = command.state;
 
     // The MiLight Backend caches the last brightness value for 'bulb_mode = color' and 'bulb_mode = white'
     // separately and returns them again as a Backchannel update on a bulb_mode change. This behaviour is
