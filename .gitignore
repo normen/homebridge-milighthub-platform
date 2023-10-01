@@ -1,7 +1,6 @@
 .idea/
 node_modules/
 .homebridge/
-.vscode
 package-lock.json
 tags
 session.vim
