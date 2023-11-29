@@ -121,12 +121,27 @@ class MiLightHubPlatform {
             platform.log('Using HTTP server at ' + platform.host);
           }
         }
-        for (var name in settings.group_id_aliases) {
-          var values = settings.group_id_aliases[name];
-          var lightInfo = { name: name, device_id: values[1], group_id: values[2], remote_type: values[0], uid: '0x' + values[1].toString(16).toUpperCase() + '/' + values[0] + '/' + values[2] };
-          lightList.push(lightInfo);
+        if(settings.group_id_aliases) {
+          for (var name in settings.group_id_aliases) {
+            var values = settings.group_id_aliases[name];
+            var lightInfo = { name: name, device_id: values[1], group_id: values[2], remote_type: values[0], uid: '0x' + values[1].toString(16).toUpperCase() + '/' + values[0] + '/' + values[2] };
+            lightList.push(lightInfo);
+          }
+          platform.syncLightLists(lightList);
+        } else {
+          const aliases_path = '/aliases';
+          this.apiCall(aliases_path).then(response => {
+            if (response) {
+              const aliases = JSON.parse(response);
+              // TODO: check if we have to paginate (no API docs for that?)
+              for (var alias in aliases.aliases) {
+                var lightInfo = { name: alias.alias, device_id: alias.device_id, group_id: alias.group_id, remote_type: alias.device_type, uid: '0x' + alias.device_id.toString(16).toUpperCase() + '/' + alias.device_type + '/' + alias.group_id };
+                lightList.push(lightInfo);
+              }
+              platform.syncLightLists(lightList);
+            }
+          });
         }
-        platform.syncLightLists(lightList);
       }
       setTimeout(platform.getServerLightList.bind(platform), platform.syncHubInterval * 1000);
     });
