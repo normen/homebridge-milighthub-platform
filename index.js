@@ -130,7 +130,7 @@ class MiLightHubPlatform {
           platform.syncLightLists(lightList);
         } else {
           const aliases_path = '/aliases';
-          this.apiCall(aliases_path).then(response => {
+          platform.apiCall(aliases_path).then(response => {
             if (response) {
               const aliases = JSON.parse(response);
               // TODO: check if we have to paginate (no API docs for that?)
