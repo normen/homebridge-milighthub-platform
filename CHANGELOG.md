@@ -4,6 +4,10 @@ This is the change log for the plugin, all relevant changes will be listed here.
 
 For documentation please see the [README](https://github.com/normen/homebridge-milighthub-platform/blob/master/README.md)
 
+## 1.0.1
+
+- compatibility with milight-hub v1.11+
+
 ## 1.0.0
 
 - some doc/README updates

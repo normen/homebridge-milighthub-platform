@@ -1,6 +1,6 @@
 {
   "name": "homebridge-milighthub-platform",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Homebridge plugin to control Milight (EULight, Easybulb, LimitlessLED) lamps with the ESP8662 Milight Hub using MQTT or HTTP",
   "main": "index.js",
   "scripts": {
