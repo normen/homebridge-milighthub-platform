@@ -135,9 +135,9 @@ class MiLightHubPlatform {
               const aliases = JSON.parse(response);
               // TODO: check if we have to paginate (no API docs for that?)
               platform.log(aliases);
-              for (var alias in aliases.aliases) {
-                //var lightInfo = { name: alias.alias, device_id: alias.device_id, group_id: alias.group_id, remote_type: alias.device_type, uid: '0x' + alias.device_id.toString(16).toUpperCase() + '/' + alias.device_type + '/' + alias.group_id };
-                var lightInfo = { name: alias.alias, device_id: alias.device_id, group_id: alias.group_id, remote_type: alias.device_type, uid: '0x' + alias.device_id + '/' + alias.device_type + '/' + alias.group_id };
+              for (var idx in aliases.aliases) {
+                var alias = aliases.aliases[idx];
+                var lightInfo = { name: alias.alias, device_id: alias.device_id, group_id: alias.group_id, remote_type: alias.device_type, uid: '0x' + alias.device_id.toString(16).toUpperCase() + '/' + alias.device_type + '/' + alias.group_id };
                 lightList.push(lightInfo);
               }
               platform.syncLightLists(lightList);
