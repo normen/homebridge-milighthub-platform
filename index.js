@@ -28,6 +28,13 @@ function bindCharacteristicSetter(characteristic, handler) {
   }
 }
 
+function getExistingCharacteristic(service, characteristicType) {
+  if (typeof service.testCharacteristic === 'function' && !service.testCharacteristic(characteristicType)) {
+    return null;
+  }
+  return service.getCharacteristic(characteristicType);
+}
+
 // main platform class, manages milight Accessories for one milight hub
 class MiLightHubPlatform {
   constructor (log, config, api) {
@@ -372,7 +379,7 @@ class MiLight {
     this.group_id = this.accessory.context.light_info.group_id;
     this.remote_type = this.accessory.context.light_info.remote_type;
     this.applyCallbacks(this.accessory);
-    this.currentState = { state: false, level: 100, saturation: 0, hue: 0, color_temp: 153, lastMQTTMessage: Buffer.from('') };
+    this.currentState = { state: false, level: 100, saturation: 0, hue: 0, color_temp: 153, bulb_mode: null, lastMQTTMessage: Buffer.from('') };
     this.designatedState = {};
     this.myTimeout = null;
   }
@@ -433,9 +440,42 @@ class MiLight {
       this.platform.debugLog('Characteristic.Saturation is set');
       bindCharacteristicSetter(lightbulbService.getCharacteristic(Characteristic.Saturation), this.setSaturation.bind(this));
     }
-    if (this.platform.rgbcctMode && (lightbulbService.getCharacteristic(Characteristic.ColorTemperature))) {
+    const colorTemperatureCharacteristic = getExistingCharacteristic(lightbulbService, Characteristic.ColorTemperature);
+    if (colorTemperatureCharacteristic) {
       this.platform.debugLog('Characteristic.ColorTemperature is set');
-      bindCharacteristicSetter(lightbulbService.getCharacteristic(Characteristic.ColorTemperature), this.setColorTemperature.bind(this));
+      bindCharacteristicSetter(colorTemperatureCharacteristic, this.setColorTemperature.bind(this));
+      this.configureAdaptiveLighting(accessory, lightbulbService);
+    }
+  }
+
+  configureAdaptiveLighting (accessory, lightbulbService) {
+    const AdaptiveLightingController = this.platform.api && this.platform.api.hap && this.platform.api.hap.AdaptiveLightingController;
+    if (typeof AdaptiveLightingController !== 'function' || this.adaptiveLightingController) {
+      return;
+    }
+
+    if (!getExistingCharacteristic(lightbulbService, Characteristic.ColorTemperature)) {
+      return;
+    }
+
+    this.adaptiveLightingController = new AdaptiveLightingController(lightbulbService);
+    accessory.configureController(this.adaptiveLightingController);
+  }
+
+  disableAdaptiveLightingForBackchannel (lightbulbService) {
+    if (!this.adaptiveLightingController || !this.adaptiveLightingController.isAdaptiveLightingActive()) {
+      return;
+    }
+
+    const colorTemperatureCharacteristic = getExistingCharacteristic(lightbulbService, Characteristic.ColorTemperature);
+    const colorTemperatureChanged = colorTemperatureCharacteristic &&
+      typeof colorTemperatureCharacteristic.value === 'number' &&
+      typeof this.currentState.color_temp === 'number' &&
+      Math.abs(colorTemperatureCharacteristic.value - this.currentState.color_temp) > 1;
+
+    if (this.currentState.bulb_mode === 'color' || colorTemperatureChanged) {
+      this.platform.debugLog('Disabling adaptive lighting for ' + this.accessory.displayName + ' due to external color state update');
+      this.adaptiveLightingController.disableAdaptiveLighting();
     }
   }
 
@@ -444,6 +484,8 @@ class MiLight {
   // basically the opposite of applyDesignatedState
   updateHomekitState() {
     const lightbulbService = this.accessory.getService(Service.Lightbulb);
+    const colorTemperatureCharacteristic = getExistingCharacteristic(lightbulbService, Characteristic.ColorTemperature);
+
     if (lightbulbService.getCharacteristic(Characteristic.On) && (lightbulbService.getCharacteristic(Characteristic.On).value !== this.currentState.state)) {
       this.platform.debugLog('Backchannel update for ' + this.accessory.displayName + ': On is updated from ' + lightbulbService.getCharacteristic(Characteristic.On).value + ' to ' + this.currentState.state);
       lightbulbService.getCharacteristic(Characteristic.On)
@@ -464,9 +506,10 @@ class MiLight {
       lightbulbService.getCharacteristic(Characteristic.Saturation)
         .updateValue(this.currentState.saturation);
     }
-    if (this.platform.rgbcctMode && (lightbulbService.getCharacteristic(Characteristic.ColorTemperature)) && (lightbulbService.getCharacteristic(Characteristic.ColorTemperature).value !== this.currentState.color_temp)) {
-      this.platform.debugLog('Backchannel update for ' + this.accessory.displayName + ': ColorTemperature is updated from ' + lightbulbService.getCharacteristic(Characteristic.ColorTemperature).value + ' to ' + this.currentState.color_temp);
-      lightbulbService.getCharacteristic(Characteristic.ColorTemperature)
+    this.disableAdaptiveLightingForBackchannel(lightbulbService);
+    if (colorTemperatureCharacteristic && colorTemperatureCharacteristic.value !== this.currentState.color_temp) {
+      this.platform.debugLog('Backchannel update for ' + this.accessory.displayName + ': ColorTemperature is updated from ' + colorTemperatureCharacteristic.value + ' to ' + this.currentState.color_temp);
+      colorTemperatureCharacteristic
         .updateValue(this.currentState.color_temp);
     }
   }
@@ -485,6 +528,7 @@ class MiLight {
   // apply a received state (via HTTP or MQTT) as the currentState
   // updates the HomeKit state accordingly
   applyState(returnValue) {
+    this.currentState.bulb_mode = returnValue.bulb_mode;
     this.currentState.state = returnValue.state === 'ON' || returnValue.bulb_mode === 'night';
     //check if brightness exists (not available for group lamps)
     this.currentState.level = returnValue.bulb_mode === 'night' ? 1 : returnValue.brightness ? Math.round(returnValue.brightness / 2.55) : 0; 
@@ -508,6 +552,8 @@ class MiLight {
   applyDesignatedState () {
     const dstate = this.designatedState;
     const cstate = this.currentState;
+    const lightbulbService = this.accessory.getService(Service.Lightbulb);
+    const colorTemperatureCharacteristic = lightbulbService ? getExistingCharacteristic(lightbulbService, Characteristic.ColorTemperature) : null;
     this.designatedState = {};
     const command = {};
     if (typeof dstate.state !== 'undefined') { // check if HomeKit actually set an on/off state
@@ -587,11 +633,14 @@ class MiLight {
         command.kelvin = kelvin;
         cstate.kelvin = kelvin;
       }
-    } else if (dstate.color_temp !== undefined) {
+    }
+    if (colorTemperatureCharacteristic && dstate.color_temp !== undefined && Math.abs(cstate.color_temp - dstate.color_temp) > 1) {
       command.color_temp = dstate.color_temp;
       cstate.color_temp = dstate.color_temp;
     }
-    this.platform.sendCommand(this.name, this.device_id, this.remote_type, this.group_id, command);
+    if (Object.keys(command).length > 0) {
+      this.platform.sendCommand(this.name, this.device_id, this.remote_type, this.group_id, command);
+    }
   }
 
   // setters for Homebridge, set the designatedState and trigger a changeState
@@ -633,9 +682,11 @@ class MiLight {
   }
 
   setColorTemperature (value, callback) {
-    this.designatedState.color_temp = value;
-    this.platform.debugLog(['[setColorTemperature] ' + value]);
-    this.stateChanged();
+    if (Math.abs(this.currentState.color_temp - value) > 1) {
+      this.designatedState.color_temp = value;
+      this.platform.debugLog(['[setColorTemperature] ' + value]);
+      this.stateChanged();
+    }
     if (typeof callback === 'function') {
       callback(null);
     }

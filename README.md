@@ -11,6 +11,7 @@ This plugin is compatible with Homebridge `^1.6.0` and the current Homebridge `^
   - No config.json editing, no entering stuff twice
 - Automatically uses MQTT if configured in the MiLight Hub
   - Using an MQTT broker can improve performance when using many lamps
+- Supports HomeKit Adaptive Lighting for lights exposed with `ColorTemperature`
 
 ## Installation
 
@@ -63,6 +64,10 @@ If MQTT is configured in the MiLight Hub then the plugin will automatically read
 Make sure your MQTT _topic pattern_ includes the `:device_id`, `:device_type` and `:group_id` values, e.g. `milight/:device_id/:device_type/:group_id`.
 
 To use the MQTT backchannel set MQTT topic _state pattern_ to e.g. `milight_state/:device_id/:device_type/:group_id`.
+
+#### Adaptive Lighting
+
+Adaptive Lighting is enabled automatically for lamps that expose `ColorTemperature`, including white remotes and RGB+CCT remotes when `rgbcctMode` is enabled. External color changes reported through MQTT or HTTP backchannel will disable Adaptive Lighting so HomeKit stays in sync with the real lamp state.
 
 ## Limitations
 

@@ -4,6 +4,12 @@ This is the change log for the plugin, all relevant changes will be listed here.
 
 For documentation please see the [README](https://github.com/normen/homebridge-milighthub-platform/blob/master/README.md)
 
+## 1.2.0
+
+- add core HomeKit Adaptive Lighting support for lights with `ColorTemperature`
+- disable Adaptive Lighting on real backchannel color changes without pulling in the old PR workarounds
+- thanks to @Zer0x00 for the original adaptive lighting PR that laid the groundwork for this release
+
 ## 1.1.0
 
 - add Homebridge 2.0 beta compatibility metadata while keeping Homebridge 1.x support
