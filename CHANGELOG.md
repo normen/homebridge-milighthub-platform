@@ -4,6 +4,11 @@ This is the change log for the plugin, all relevant changes will be listed here.
 
 For documentation please see the [README](https://github.com/normen/homebridge-milighthub-platform/blob/master/README.md)
 
+## 1.1.0
+
+- add Homebridge 2.0 beta compatibility metadata while keeping Homebridge 1.x support
+- prefer modern characteristic setter registration with a legacy fallback for older Homebridge releases
+
 ## 1.0.1
 
 - compatibility with milight-hub v1.11+

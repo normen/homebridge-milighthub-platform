@@ -3,6 +3,9 @@ const packageJSON = require('./package.json');
 var http = require('http');
 var mqtt = require('mqtt');
 
+const PLUGIN_NAME = 'homebridge-milighthub-platform';
+const PLATFORM_NAME = 'MiLightHubPlatform';
+
 var Accessory, Service, Characteristic, UUIDGen;
 
 module.exports = function (homebridge) {
@@ -10,8 +13,20 @@ module.exports = function (homebridge) {
   Service = homebridge.hap.Service;
   Characteristic = homebridge.hap.Characteristic;
   UUIDGen = homebridge.hap.uuid;
-  homebridge.registerPlatform('homebridge-milighthub-platform', 'MiLightHubPlatform', MiLightHubPlatform, true);
+  if (typeof homebridge.versionGreaterOrEqual === 'function' && homebridge.versionGreaterOrEqual('2.0.0-beta.0')) {
+    homebridge.registerPlatform(PLUGIN_NAME, PLATFORM_NAME, MiLightHubPlatform);
+  } else {
+    homebridge.registerPlatform(PLUGIN_NAME, PLATFORM_NAME, MiLightHubPlatform, true);
+  }
 };
+
+function bindCharacteristicSetter(characteristic, handler) {
+  if (typeof characteristic.onSet === 'function') {
+    characteristic.onSet(value => handler(value));
+  } else {
+    characteristic.on('set', handler);
+  }
+}
 
 // main platform class, manages milight Accessories for one milight hub
 class MiLightHubPlatform {
@@ -175,7 +190,7 @@ class MiLightHubPlatform {
     removals.forEach(idx => {
       var milight = platform.accessories[idx-removed];
       platform.log('Removing ' + milight.name + ' from HomeKit');
-      platform.api.unregisterPlatformAccessories('homebridge-milighthub-platform', 'MiLightHubPlatform', [milight.accessory]);
+      platform.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [milight.accessory]);
       platform.accessories.splice(idx-removed, 1);
       removed++;
     });
@@ -189,7 +204,7 @@ class MiLightHubPlatform {
         platform.log('Adding ' + lightInfo.name + ' to HomeKit');
         const milight = new MiLight(platform, lightInfo);
         platform.accessories.push(milight);
-        platform.api.registerPlatformAccessories('homebridge-milighthub-platform', 'MiLightHubPlatform', [milight.accessory]);
+        platform.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [milight.accessory]);
       }
     });
   }
@@ -245,7 +260,7 @@ class MiLightHubPlatform {
           };
         }
         if (this.httpUsername && this.httpPassword) {
-          var base64AuthorizationHeader = new Buffer(this.httpUsername + ':' + this.httpPassword).toString('base64');
+          var base64AuthorizationHeader = Buffer.from(this.httpUsername + ':' + this.httpPassword).toString('base64');
           http_header.headers.Authorization = 'Basic ' + base64AuthorizationHeader;
         }
         const req = http.request(url, http_header, res => {
@@ -404,28 +419,23 @@ class MiLight {
     }
     if (lightbulbService.getCharacteristic(Characteristic.On)) {
       this.platform.debugLog('Characteristic.On is set');
-      lightbulbService.getCharacteristic(Characteristic.On)
-        .on('set', this.setPowerState.bind(this));
+      bindCharacteristicSetter(lightbulbService.getCharacteristic(Characteristic.On), this.setPowerState.bind(this));
     }
     if (lightbulbService.getCharacteristic(Characteristic.Brightness)) {
       this.platform.debugLog('Characteristic.Brightness is set');
-      lightbulbService.getCharacteristic(Characteristic.Brightness)
-        .on('set', this.setBrightness.bind(this));
+      bindCharacteristicSetter(lightbulbService.getCharacteristic(Characteristic.Brightness), this.setBrightness.bind(this));
     }
     if (lightbulbService.getCharacteristic(Characteristic.Hue)) {
       this.platform.debugLog('Characteristic.Hue is set');
-      lightbulbService.getCharacteristic(Characteristic.Hue)
-        .on('set', this.setHue.bind(this));
+      bindCharacteristicSetter(lightbulbService.getCharacteristic(Characteristic.Hue), this.setHue.bind(this));
     }
     if (lightbulbService.getCharacteristic(Characteristic.Saturation)) {
       this.platform.debugLog('Characteristic.Saturation is set');
-      lightbulbService.getCharacteristic(Characteristic.Saturation)
-        .on('set', this.setSaturation.bind(this));
+      bindCharacteristicSetter(lightbulbService.getCharacteristic(Characteristic.Saturation), this.setSaturation.bind(this));
     }
     if (this.platform.rgbcctMode && (lightbulbService.getCharacteristic(Characteristic.ColorTemperature))) {
       this.platform.debugLog('Characteristic.ColorTemperature is set');
-      lightbulbService.getCharacteristic(Characteristic.ColorTemperature)
-        .on('set', this.setColorTemperature.bind(this));
+      bindCharacteristicSetter(lightbulbService.getCharacteristic(Characteristic.ColorTemperature), this.setColorTemperature.bind(this));
     }
   }
 
@@ -590,35 +600,45 @@ class MiLight {
     this.designatedState.state = powerOn;
     this.platform.debugLog(['[setPowerState] ' + powerOn]);
     this.stateChanged();
-    callback(null);
+    if (typeof callback === 'function') {
+      callback(null);
+    }
   }
 
   setBrightness (level, callback) {
     this.designatedState.level = level;
     this.platform.debugLog(['[setBrightness] ' + level]);
     this.stateChanged();
-    callback(null);
+    if (typeof callback === 'function') {
+      callback(null);
+    }
   }
 
   setHue (value, callback) {
     this.designatedState.hue = value;
     this.platform.debugLog(['[setHue] ' + value]);
     this.stateChanged();
-    callback(null);
+    if (typeof callback === 'function') {
+      callback(null);
+    }
   }
 
   setSaturation (value, callback) {
     this.designatedState.saturation = value;
     this.platform.debugLog(['[setSaturation] ' + value]);
     this.stateChanged();
-    callback(null);
+    if (typeof callback === 'function') {
+      callback(null);
+    }
   }
 
   setColorTemperature (value, callback) {
     this.designatedState.color_temp = value;
     this.platform.debugLog(['[setColorTemperature] ' + value]);
     this.stateChanged();
-    callback(null);
+    if (typeof callback === 'function') {
+      callback(null);
+    }
   }
 }
 

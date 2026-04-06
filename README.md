@@ -2,6 +2,8 @@
 
 Homebridge plugin to control MiLight / LightEU / Limitless / Easybulb lamps through the ESP8266 based Open Source [MiLight Hub](https://github.com/sidoh/esp8266_milight_hub).
 
+This plugin is compatible with Homebridge `^1.6.0` and the current Homebridge `^2.0.0-beta` releases.
+
 ## Features
 
 - Automatically fetches all MiLight Hub aliases as lights
@@ -12,7 +14,7 @@ Homebridge plugin to control MiLight / LightEU / Limitless / Easybulb lamps thro
 
 ## Installation
 
-1. Install homebridge using: npm install -g homebridge
+1. Install Homebridge using `npm install -g homebridge` for Homebridge 1.x or `npm install -g homebridge@beta` for Homebridge 2.0 beta
 2. Install this plugin using: npm install -g homebridge-milighthub-platform
 3. Add the plugin through your config.json
 
@@ -78,7 +80,7 @@ RGB+CCT / RGBW(W) milights have two modes, color temperature and RGB. Unfortunat
 
 ## Development
 
-If you want new features or improve the plugin, you're very welcome to do so. The projects `devDependencies` include homebridge and the `npm run test` command has been adapted so that you can run a test instance of homebridge during development.
+If you want new features or improve the plugin, you're very welcome to do so. The project's `devDependencies` include Homebridge 2.0 beta and the `npm run test` command has been adapted so that you can run a test instance of Homebridge during development.
 
 #### Setup
 
