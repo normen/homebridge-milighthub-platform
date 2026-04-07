@@ -35,6 +35,15 @@ function getExistingCharacteristic(service, characteristicType) {
   return service.getCharacteristic(characteristicType);
 }
 
+function safeJsonParse(payload, log, context) {
+  try {
+    return JSON.parse(payload);
+  } catch (error) {
+    log('Failed to parse JSON from ' + context, error);
+    return null;
+  }
+}
+
 // main platform class, manages milight Accessories for one milight hub
 class MiLightHubPlatform {
   constructor (log, config, api) {
@@ -119,7 +128,11 @@ class MiLightHubPlatform {
     this.apiCall(settings_path).then(response => {
       if (response) {
         var lightList = [];
-        const settings = JSON.parse(response);
+        const settings = safeJsonParse(response, platform.log, settings_path);
+        if (!settings) {
+          setTimeout(platform.getServerLightList.bind(platform), platform.syncHubInterval * 1000);
+          return;
+        }
         if (platform.mqttServer !== settings.mqtt_server) {
           platform.mqttServer = settings.mqtt_server;
           platform.mqttUser = settings.mqtt_username;
@@ -154,7 +167,13 @@ class MiLightHubPlatform {
           const aliases_path = '/aliases';
           platform.apiCall(aliases_path).then(response => {
             if (response) {
-              const aliases = JSON.parse(response);
+              const aliases = safeJsonParse(response, platform.log, aliases_path);
+              if (!aliases || !Array.isArray(aliases.aliases)) {
+                if (aliases) {
+                  platform.log('Unexpected aliases payload from ' + aliases_path, aliases);
+                }
+                return;
+              }
               // TODO: check if we have to paginate (no API docs for that?)
               platform.log(aliases);
               for (var idx in aliases.aliases) {
@@ -307,7 +326,14 @@ class MiLightHubPlatform {
   async getHttpState(milight) {
     if (!this.mqttClient) {
       var path = '/gateways/' + '0x' + milight.device_id.toString(16) + '/' + milight.remote_type + '/' + milight.group_id;
-      var returnValue = JSON.parse(await this.apiCall(path));
+      const response = await this.apiCall(path);
+      if (!response) {
+        return;
+      }
+      var returnValue = safeJsonParse(response, this.log, path);
+      if (!returnValue) {
+        return;
+      }
       milight.applyState(returnValue);
     }
   }
@@ -345,7 +371,10 @@ class MiLightHubPlatform {
           var mqttCurrentLightPath = platform.mqttStateTopicPattern.replace(':hex_device_id', hexId).replace(':dec_device_id', hexId).replace(':device_id', hexId).replace(':device_type', milight.remote_type).replace(':group_id', milight.group_id);
           if (topic.includes(mqttCurrentLightPath) && Buffer.compare(milight.currentState.lastMQTTMessage, message) !== 0) {
             milight.currentState.lastMQTTMessage = message;
-            var returnValue = JSON.parse(message);
+            var returnValue = safeJsonParse(message, platform.log, 'MQTT topic ' + topic);
+            if (!returnValue) {
+              return;
+            }
             platform.debugLog(['Parsing MQTT message from ' + topic + ': ', returnValue]);
             milight.applyState(returnValue);
           }

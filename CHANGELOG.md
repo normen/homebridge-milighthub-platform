@@ -4,6 +4,11 @@ This is the change log for the plugin, all relevant changes will be listed here.
 
 For documentation please see the [README](https://github.com/normen/homebridge-milighthub-platform/blob/master/README.md)
 
+## 1.2.1
+
+- harden JSON parsing for hub settings, aliases, HTTP state responses, and MQTT backchannel payloads
+- log malformed payloads and skip them instead of crashing the plugin
+
 ## 1.2.0
 
 - add core HomeKit Adaptive Lighting support for lights with `ColorTemperature`
