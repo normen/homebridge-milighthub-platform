@@ -4,82 +4,74 @@
   "headerDisplay": "Configure your lights in your [MiLight Hub](http://milight-hub.local)",
   "footerDisplay": "For documentation please see http://github.com/normen/homebridge-milighthub-platform",
   "schema": {
-    "host": {
-      "title": "Hostname",
-      "type": "string",
-      "default": "milight-hub.local",
-      "description": "The hostname or IP address of the MiLight Hub",
-      "required": false
-    },
-    "name": {
-      "title": "Log Name",
-      "type": "string",
-      "default": "MiLightHubPlatform",
-      "description": "The name of the platform as it appears in the homebridge log",
-      "required": false
-    },
-    "httpUsername": {
-      "title": "Authorization: HTTP Username",
-      "type": "string",
-      "default": "",
-      "description": "Only needed if you are using username:password authentication for your MiLight Hub",
-      "required": false
-    },
-    "httpPassword": {
-      "title": "Authorization: HTTP Password",
-      "type": "string",
-      "default": "",
-      "description": "Only needed if you are using username:password authentication for your MiLight Hub",
-      "required": false
-    },
-    "backchannel": {
-      "title": "Backchannel enabled",
-      "type": "boolean",
-      "default": false,
-      "description": "If enabled HomeKit will update if MiLight hub is controlled otherwise",
-      "required": false
-    },
-    "darkMode": {
-      "title": "Mitigate bright flashing of lights",
-      "type": "boolean",
-      "default": false,
-      "description": "A feature to mitigate the bright flashing of the lights if you turn them on with a low brightness value & to cache the last value before power off",
-      "required": false
-    },
-    "rgbcctMode": {
-      "title": "RGB+CCT mode enabled",
-      "type": "boolean",
-      "default": false,
-      "description": "Enables ColorTemperature characteristic which is unsupported by HomeKit in combination with RGB characteristics but gives you a more accurate control of your lights at the expense of not supporting favorite colors in Home App anymore.",
-      "required": false
-    },
-    "forceHTTP": {
-      "title": "Force HTTP instead of MQTT",
-      "type": "boolean",
-      "default": false,
-      "description": "Force use of HTTP regardless of MQTT settings in your MiLight hub",
-      "required": false
-    },
-    "syncHubInterval": {
-      "title": "Hub synchronization interval",
-      "type": "integer",
-      "default": 10,
-      "description": "Defines the interval in seconds for synchronizing light lists with the hub",
-      "required": false
-    },
-    "commandDelay": {
-      "title": "Command delay",
-      "type": "integer",
-      "default": 100,
-      "description": "How long to wait for HomeKit to send all values for one light (milliseconds)",
-      "required": false
-    },
-    "debug": {
-      "title": "Debug mode enabled",
-      "type": "boolean",
-      "default": false,
-      "description": "Enables debug mode",
-      "required": false
+    "type": "object",
+    "properties": {
+      "host": {
+        "title": "Hostname",
+        "type": "string",
+        "default": "milight-hub.local",
+        "description": "The hostname or IP address of the MiLight Hub"
+      },
+      "name": {
+        "title": "Log Name",
+        "type": "string",
+        "default": "MiLightHubPlatform",
+        "description": "The name of the platform as it appears in the homebridge log"
+      },
+      "httpUsername": {
+        "title": "Authorization: HTTP Username",
+        "type": "string",
+        "default": "",
+        "description": "Only needed if you are using username:password authentication for your MiLight Hub"
+      },
+      "httpPassword": {
+        "title": "Authorization: HTTP Password",
+        "type": "string",
+        "default": "",
+        "description": "Only needed if you are using username:password authentication for your MiLight Hub"
+      },
+      "backchannel": {
+        "title": "Backchannel enabled",
+        "type": "boolean",
+        "default": false,
+        "description": "If enabled HomeKit will update if MiLight hub is controlled otherwise"
+      },
+      "darkMode": {
+        "title": "Mitigate bright flashing of lights",
+        "type": "boolean",
+        "default": false,
+        "description": "A feature to mitigate the bright flashing of the lights if you turn them on with a low brightness value & to cache the last value before power off"
+      },
+      "rgbcctMode": {
+        "title": "RGB+CCT mode enabled",
+        "type": "boolean",
+        "default": false,
+        "description": "Enables ColorTemperature characteristic which is unsupported by HomeKit in combination with RGB characteristics but gives you a more accurate control of your lights at the expense of not supporting favorite colors in Home App anymore."
+      },
+      "forceHTTP": {
+        "title": "Force HTTP instead of MQTT",
+        "type": "boolean",
+        "default": false,
+        "description": "Force use of HTTP regardless of MQTT settings in your MiLight hub"
+      },
+      "syncHubInterval": {
+        "title": "Hub synchronization interval",
+        "type": "integer",
+        "default": 10,
+        "description": "Defines the interval in seconds for synchronizing light lists with the hub"
+      },
+      "commandDelay": {
+        "title": "Command delay",
+        "type": "integer",
+        "default": 100,
+        "description": "How long to wait for HomeKit to send all values for one light (milliseconds)"
+      },
+      "debug": {
+        "title": "Debug mode enabled",
+        "type": "boolean",
+        "default": false,
+        "description": "Enables debug mode"
+      }
     }
   },
   "form": [

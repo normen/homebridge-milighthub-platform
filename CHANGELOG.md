@@ -4,6 +4,11 @@ This is the change log for the plugin, all relevant changes will be listed here.
 
 For documentation please see the [README](https://github.com/normen/homebridge-milighthub-platform/blob/master/README.md)
 
+## 1.2.2
+
+- update `config.schema.json` to the current object/properties layout expected by the Homebridge schema validator
+- fix schema validation errors for the missing `schema.type` and `name` property definition
+
 ## 1.2.1
 
 - harden JSON parsing for hub settings, aliases, HTTP state responses, and MQTT backchannel payloads
